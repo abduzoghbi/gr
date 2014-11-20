@@ -9,5 +9,6 @@
 #define INC_GR_HPP_
 
 #include "photon.hpp"
+#include "tetrad.hpp"
 
 #endif /* INC_GR_HPP_ */
