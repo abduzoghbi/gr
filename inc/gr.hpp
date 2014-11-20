@@ -8,7 +8,6 @@
 #ifndef INC_GR_HPP_
 #define INC_GR_HPP_
 
-#include "photon.hpp"
-#include "tetrad.hpp"
+#include "flash.hpp"
 
 #endif /* INC_GR_HPP_ */

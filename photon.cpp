@@ -155,7 +155,16 @@ void photon::propagate( double src[] ) {
 		//_const_of_motion();
 		//for( i=0 ;i<4 ; i++ ) { printf("%3.3e ",rvec[i]);} printf("%3.3e %3.3e %3d\n",tau,dtau,iter);
 
-		if ( stopping ) break;
+		if ( stopping ) {
+			try{
+				calc_rdot();
+				Tau		=	tau_c;
+			}catch( int ie ){
+				diff = sqrt(-1);
+				rdot[0] = diff;rdot[1] = diff;rdot[2] = diff; rdot[3] = diff;Tau = 0;
+			}
+			break;
+		}
 	}
 	/* -------------------------- */
 

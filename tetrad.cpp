@@ -64,12 +64,11 @@ void tetrad::_drdt_limits( double drdt[] ){
 	/* aa = gtt + 2*gtp*drdt[2] + gpp*drdt[2]^2 + grr*drdt[0]^2 + gthth*drdt[1]^2 has to be negative */
 
 	// requirement for dpdt: gpp*dpdt^2 + 2gtp*dpdt +gtt>0 //
-	double	del,cond1;
+	double	del;
 	double	Phi1,Phi2;
 	del		=	gtp*gtp - gpp*gtt;
 	Phi1	=	(-gtp - sqrt(del))/gpp;
 	Phi2	=	(-gtp + sqrt(del))/gpp;
-	cond1	=	gpp*drdt[2]*drdt[2] + 2*gtp*drdt[2] + gtt;
 	if( drdt[2]<Phi1 or drdt[2]>Phi2){
 		printf("dp_dt value not allowed, it should be between [%g,%g]. Value given: %g\n",
 				Phi1,Phi2,drdt[2]);

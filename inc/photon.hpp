@@ -41,7 +41,7 @@ class photon {
 
 public:
 	/**** Public Variables ****/
-	double		E,L,Q,a;
+	double		E,L,Q,a,Tau;
 	int			rsign,thsign;
 	double		*rvec,*rdot;
 
