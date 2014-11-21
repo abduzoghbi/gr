@@ -20,8 +20,8 @@ namespace gr {
 
 const static double INTG_ERROR 	=	1E-8;
 const static double	DTAU_FAC	=	2;
-const static double	RDOT_ZERO	=	1e-4;
-const static double RINF		=	20;
+const static double	RDOT_ZERO	=	1e-12;
+const static double RINF		=	1000;
 const static double STP_ZERO	=	1e-4;
 const static int	NLOOP		=	400;
 const static int	NCHANGE		=	5;
@@ -37,7 +37,7 @@ class photon {
 	/**** Private Functions ****/
 	void		_setup_vars();
 	void		_const_of_motion();
-	void		_print_xyz();
+
 
 public:
 	/**** Public Variables ****/
@@ -51,6 +51,7 @@ public:
 	virtual ~photon();
 	void 		calc_rdot();
 	void		propagate( double* src );
+	void		_print_xyz();
 };
 
 

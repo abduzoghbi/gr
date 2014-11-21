@@ -14,7 +14,7 @@ ax.set_xlim3d(-10,10)
 ax.set_ylim3d(-10,10)
 ax.set_zlim3d(-10,10)
 
-ax.plot(d[:,0],d[:,1],d[:,2])
+ax.plot(d[:,0],d[:,1],d[:,2],'o')
 
 
 u = np.linspace(0, 2 * np.pi, 100)

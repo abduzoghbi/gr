@@ -61,6 +61,9 @@ void photon::calc_rdot(){
 
 	rdot[1]		=	rsign  * sqrt( rdot2  );
 	rdot[2]		=	thsign * sqrt( thdot2 );
+
+
+	//printf("--- %3.3e %3.3e %3.3e %3.3e %d %d\n",rdot[0],rdot[1],rdot[2],rdot[3],rsign,thsign);
 }
 /* =================================== */
 
@@ -69,14 +72,12 @@ void photon::calc_rdot(){
 void photon::propagate( double src[] ) {
 
 	int			iter,i;
-	double		diff,err,tau,tau_c,dtau = 0.01,halfpi=M_PI/2.;
+	double		diff,err,tau,tau_c,dtau = 0.001,halfpi=M_PI/2.;
 	double		*rvec_c,*rvec_tmp,*rvec_err;
 	bool		stopping;
 
 	gsl_odeiv2_system				sys = { func , NULL , 4, (void*)(this) };
-	const gsl_odeiv2_step_type 		*step = gsl_odeiv2_step_rk8pd;
-	gsl_odeiv2_driver 				*driv =
-		gsl_odeiv2_driver_alloc_standard_new (&sys, step, dtau, INTG_ERROR, INTG_ERROR, 1.0, 1.0);
+	const gsl_odeiv2_step_type 		*step = gsl_odeiv2_step_rkf45;
 	gsl_odeiv2_step					*stepper = gsl_odeiv2_step_alloc ( step , 4 );
 
 
@@ -151,7 +152,7 @@ void photon::propagate( double src[] ) {
 		ir_change++; ith_change++;
 
 
-		_print_xyz();
+		//_print_xyz();
 		//_const_of_motion();
 		//for( i=0 ;i<4 ; i++ ) { printf("%3.3e ",rvec[i]);} printf("%3.3e %3.3e %3d\n",tau,dtau,iter);
 
@@ -170,7 +171,6 @@ void photon::propagate( double src[] ) {
 
 
 	/* CLEAR ALLOCATED MEMORY */
-	gsl_odeiv2_driver_free( driv );
 	delete[] rvec_c;
 	delete[] rvec_tmp;
 	delete[] rvec_err;

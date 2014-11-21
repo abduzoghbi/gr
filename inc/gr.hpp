@@ -9,5 +9,6 @@
 #define INC_GR_HPP_
 
 #include "flash.hpp"
+#include "image.hpp"
 
 #endif /* INC_GR_HPP_ */
