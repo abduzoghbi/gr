@@ -15,23 +15,15 @@ flash::flash( double s[] , double drdt[] , double spin ) {
 	for( int i=0 ; i<4 ; i++ ){ src[i] = s[i]; }
 
 	tet		=	new tetrad( s , drdt , spin );
-	consts	=	new double[4];
-	sign	=	new int[2];
-	rvec	=	new double[4];
-	rdot	=	new double[4];
 }
 
 flash::~flash() {
 	delete[] src;
-	delete[] consts;
-	delete[] sign;
-	delete[] rvec;
-	delete[] rdot;
 	delete tet;
 }
 
 /******** Const of motion for a given alpha,beta in source frame **********/
-void flash::const_of_motion ( double alpha, double beta ){
+void flash::const_of_motion ( double alpha, double beta , double* consts , int* sign ){
 	double		pt[4],rd[4];
 	int			i,j;
 	double		dum;
@@ -72,28 +64,37 @@ void flash::const_of_motion ( double alpha, double beta ){
 
 
 /******** illuminate the source with a photon at given alpha, beta **********/
-void flash::illum ( double alpha , double beta ){
-	const_of_motion( alpha , beta );
+void flash::illum ( double alpha , double beta , double* out ){
+	double		consts[3];
+	int			sign[2];
+	const_of_motion( alpha , beta , consts , sign );
 	photon	ph( consts[0] , consts[1] , consts[2] , a , sign[0] , sign[1] );
 	ph.propagate( src );
-	tau		=	ph.Tau;
-	rvec	=	ph.rvec;
-	rdot	=	ph.rdot;
+	out[0]		=	ph.Tau;
+	for( int i=0 ; i<4 ; i++ ){ out[i+1] = ph.rvec[i]; out[i+5] = ph.rdot[i]; }
 }
 /* ======================================================================== */
 
 
 /******** flash the source with isotropic num of photons **********/
 void flash::illum( int num ){
-	int		i,j;
-	double	alpha,beta;
+	int		i,j,nn,nph = num*num, ncol=9;
+	double	alpha,beta,**data;
 
+	data		=	new double*[nph];
+	for( i=0 ; i<nph ; i++ ){ data[i] = new double[ncol];}
+
+	nn	=	0;
 	for( i=0 ; i<num ; i++ ){
 		alpha		=	acos( i*2.0/(num-1) - 1);
 		for( j=0 ; j<num ; j++ ){
 			beta	=	2*M_PI*j/(num-1);
-			illum( alpha , beta );
+			illum( alpha , beta , data[nn] );
+			nn++;
 		}
+	}
+	for(i = 0;i<nph ; i++ ){
+		printf("%d %5.5e %5.5e\n",i,data[i][0],data[i][2]);
 	}
 
 }

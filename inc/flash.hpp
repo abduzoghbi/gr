@@ -20,20 +20,19 @@ class flash {
 	double		a;
 
 	// -------- Private Functions -------- //
-	void 		const_of_motion( double , double );
+	void 		const_of_motion( double , double , double* , int* );
 
 public:
 
 	// -------- Public Variables  -------- //
 	tetrad*		tet;
-	double		*src,*consts,*rvec,*rdot,tau;
-	int			*sign;
+	double		*src;
 
 
 	// -------- Public Functions -------- //
 	flash( double[] , double[] , double );
 	virtual ~flash();
-	void		illum(double ,double );
+	void		illum(double ,double , double* );
 	void		illum( int );
 };
 
