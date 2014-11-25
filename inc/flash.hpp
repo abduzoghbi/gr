@@ -11,6 +11,7 @@
 #include "tetrad.hpp"
 #include "photon.hpp"
 #include <omp.h>
+#include <H5Cpp.h>
 
 
 namespace gr {
@@ -22,6 +23,8 @@ class flash {
 
 	// -------- Private Functions -------- //
 	void 		const_of_motion( double , double , double* , int* );
+	void		write_hdf5( double* ,int , int , const string );
+	void		read_hdf5(const string , double* );
 
 public:
 
@@ -34,7 +37,7 @@ public:
 	flash( double[] , double[] , double );
 	virtual ~flash();
 	void		illum(double ,double , double* );
-	void		illum( int );
+	void		illum( int , const string fname="illum.h5" );
 };
 
 } /* namespace gr */

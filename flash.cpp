@@ -77,19 +77,19 @@ void flash::illum ( double alpha , double beta , double* out ){
 
 
 /******** flash the source with isotropic num of photons **********/
-void flash::illum( int num ){
+void flash::illum( int num , const string fname ){
 	int		i,j,k,nph = num*num, ncol=9;
-	double	**data,*Alpha,*Beta;
+	double	*data,*Alpha,*Beta;
 
 	Alpha		=	new double[nph];
 	Beta		=	new double[nph];
-	data		=	new double*[nph];
+	data		=	new double[nph*ncol];
+
 	k = 0;
 	for( i=0 ; i<num ; i++ ){
 		for( j=0 ; j<num ; j++ ){
 			Alpha[k]	=	acos( i*2.0/(num-1) - 1);
 			Beta[k]		=	2*M_PI*j/(num-1);
-			data[k]		=	new double[ncol];
 			k++;
 		}
 	}
@@ -98,14 +98,65 @@ void flash::illum( int num ){
 {
 	#pragma omp for schedule(dynamic,num) private(k)
 	for( k=0 ; k<nph ; k++ ){
-		illum( Alpha[k] , Beta[k] , data[k] );
+		illum( Alpha[k] , Beta[k] , &data[k*ncol] );
 	}
 } // end pragma omp parallel
 
-for(i = 0;i<nph ; i++ ){
-	printf("%d %5.5e %5.5e %5.5e %5.5e\n",i,Alpha[i],Beta[i],data[i][0],data[i][2]);
-}
 
+	// for(i=0;i<nph;i++){ for(j=0;j<ncol;j++){ printf("%g ",data[i*ncol+j]);} printf("\n");}
+
+
+	write_hdf5( data , nph , ncol , fname );
 }
 /* ============================================================== */
+
+
+
+/******** Write the output of illum to an hdf5 file **********/
+void flash::write_hdf5( double *data , int nx, int ny , const string fname ){
+	H5std_string  	FILE_NAME( fname );
+	H5std_string	DATASET_NAME("DATA");
+	hsize_t     	dim[2];
+	dim[0] = nx; dim[1] = ny;
+	try{
+
+		H5::Exception::dontPrint();
+
+		H5::H5File 		file( FILE_NAME, H5F_ACC_TRUNC );
+		H5::DataSpace 	dataspace( 2, dim );
+
+
+		H5::DataSet 	dataset = file.createDataSet( DATASET_NAME, H5::PredType::NATIVE_DOUBLE, dataspace );
+
+		dataset.write( data, H5::PredType::NATIVE_DOUBLE );
+
+
+	} catch ( H5::Exception &err ) {
+		err.printError();
+	}
+	//read_hdf5( fname , data );
+}
+/* ========================================================= */
+
+
+/******** Read a saved hdf5 file **********/
+void flash::read_hdf5( const string fname , double* data ){
+	H5std_string  	FILE_NAME( fname );
+	H5std_string	DATASET_NAME( "DATA" );
+	hsize_t			dims[2];
+
+
+	H5::H5File		file( FILE_NAME, H5F_ACC_RDONLY );
+	H5::DataSet		dataset = file.openDataSet( DATASET_NAME );
+	H5::DataSpace 	filespace = dataset.getSpace();
+
+	filespace.getSimpleExtentDims( dims );
+
+	H5::DataSpace	dataspace( 2 , dims );
+	dataset.read( data , H5::PredType::NATIVE_DOUBLE , dataspace , filespace );
+
+}
+
+/* ====================================== */
+
 } /* namespace gr */
