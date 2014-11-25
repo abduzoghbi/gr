@@ -78,24 +78,33 @@ void flash::illum ( double alpha , double beta , double* out ){
 
 /******** flash the source with isotropic num of photons **********/
 void flash::illum( int num ){
-	int		i,j,nn,nph = num*num, ncol=9;
-	double	alpha,beta,**data;
+	int		i,j,k,nph = num*num, ncol=9;
+	double	**data,*Alpha,*Beta;
 
+	Alpha		=	new double[nph];
+	Beta		=	new double[nph];
 	data		=	new double*[nph];
-	for( i=0 ; i<nph ; i++ ){ data[i] = new double[ncol];}
-
-	nn	=	0;
+	k = 0;
 	for( i=0 ; i<num ; i++ ){
-		alpha		=	acos( i*2.0/(num-1) - 1);
 		for( j=0 ; j<num ; j++ ){
-			beta	=	2*M_PI*j/(num-1);
-			illum( alpha , beta , data[nn] );
-			nn++;
+			Alpha[k]	=	acos( i*2.0/(num-1) - 1);
+			Beta[k]		=	2*M_PI*j/(num-1);
+			data[k]		=	new double[ncol];
+			k++;
 		}
 	}
-	for(i = 0;i<nph ; i++ ){
-		printf("%d %5.5e %5.5e\n",i,data[i][0],data[i][2]);
+
+#pragma omp parallel
+{
+	#pragma omp for schedule(dynamic,num) private(k)
+	for( k=0 ; k<nph ; k++ ){
+		illum( Alpha[k] , Beta[k] , data[k] );
 	}
+} // end pragma omp parallel
+
+for(i = 0;i<nph ; i++ ){
+	printf("%d %5.5e %5.5e %5.5e %5.5e\n",i,Alpha[i],Beta[i],data[i][0],data[i][2]);
+}
 
 }
 /* ============================================================== */

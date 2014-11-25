@@ -10,6 +10,7 @@
 
 #include "tetrad.hpp"
 #include "photon.hpp"
+#include <omp.h>
 
 
 namespace gr {
