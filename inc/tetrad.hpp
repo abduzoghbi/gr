@@ -18,7 +18,6 @@ class tetrad {
 	// -------- Private Variables -------- //
 	double		a2,r,r2,D,S,DS,sin2,cos2,A;
 	double		gtt,gtp,gpp,grr,gthth;
-	double		td,rd,thd,pd; /* rdot elements */
 
 
 	// -------- Private Functions -------- //
@@ -32,6 +31,7 @@ public:
 	double		E,L,Q,a,mu;
 	double		*rvec;
 	double		**tetrad_vec;
+	double		td,rd,thd,pd; /* rdot elements */
 
 
 	// -------- Public Functions -------- //

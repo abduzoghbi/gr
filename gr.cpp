@@ -14,10 +14,10 @@ int main() {
 	ph.propagate( pos );
 	*/
 
-	double			pos[4] = { 0 , 3 , 0.5 , 0 };
+	double			pos[4] = { 0 , 10 , 0.05 , 0 };
 	double			drdt[3] = {.3,.0,.05};
-	gr::flash		fl( pos , drdt , 0.8 );
-	fl.illum(20);
+	gr::flash		fl( pos , drdt , 0.9 );
+	fl.illum(500);
 
 	/*
 	gr::image		im( 0.8 , .8 , 20. );

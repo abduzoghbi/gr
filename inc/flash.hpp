@@ -16,6 +16,9 @@
 
 namespace gr {
 
+const static H5std_string	DATASET_NAME( "DATA" ),ATTR("src4_drdt4_a");
+const static int ATTR_SIZE = 9;
+
 class flash {
 
 	// -------- Private Variables -------- //
@@ -24,13 +27,13 @@ class flash {
 	// -------- Private Functions -------- //
 	void 		const_of_motion( double , double , double* , int* );
 	void		write_hdf5( double* ,int , int , const string );
-	void		read_hdf5(const string , double* );
+	void		read_hdf5( const string fname , double *&data , double* &attr , int *dim );
 
 public:
 
 	// -------- Public Variables  -------- //
 	tetrad*		tet;
-	double		*src;
+	double		*src,*drdt;
 
 
 	// -------- Public Functions -------- //
