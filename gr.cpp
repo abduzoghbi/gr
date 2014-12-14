@@ -15,7 +15,7 @@ int main() {
 	*/
 
 	double			pos[4] = { 0 , 10 , 0.05 , 0 };
-	double			drdt[3] = {.3,.0,.05};
+	double			drdt[3] = {0,.0,0};
 	gr::flash		fl( pos , drdt , 0.9 );
 	fl.illum(500);
 

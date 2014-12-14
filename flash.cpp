@@ -129,7 +129,7 @@ void flash::write_hdf5( double *data , int nx, int ny , const string fname ){
 		H5::DataSet 	dataset = file.createDataSet( DATASET_NAME, H5::PredType::NATIVE_DOUBLE, dataspace );
 		dataset.write( data, H5::PredType::NATIVE_DOUBLE );
 
-		double attr[ATTR_SIZE] = {src[0],src[1],src[2],src[3],tet->td,drdt[0],drdt[1],drdt[2],a};
+		double attr[ATTR_SIZE] = {src[0],src[1],src[2],src[3],tet->td,tet->rd,tet->thd,tet->pd,a};
 		dataset.createAttribute( ATTR , H5::PredType::NATIVE_DOUBLE ,
 				H5::DataSpace ( 1, dims )).write(H5::PredType::NATIVE_DOUBLE, attr);
 
