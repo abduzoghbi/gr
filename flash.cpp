@@ -316,11 +316,10 @@ void disk::emissivity(){
 
 		if( fabs( th-M_PI/2. )<1e-2 ){
 			if( islog ){
-				ir	=	log(r/rLim[0])*nr/log(rLim[1] / rLim[0]);
+				ir	=	floor(log(r/rLim[0])*nr/log(rLim[1] / rLim[0]));
 			}else{
-				ir	=	(r-rLim[0])*nr/(rLim[1] - rLim[0]);
+				ir	=	floor((r-rLim[0])*nr/(rLim[1] - rLim[0]));
 			}
-
 			if( ir >= 0 and ir<nr){
 				rcount[ir]++;
 			}else{
@@ -344,8 +343,6 @@ void disk::emissivity(){
 		redshift[ir]	/=	rcount[ir];
 		emiss[ir]		=	rcount[ir] * redshift[ir] * redshift[ir] / area[ir];
 		printf("%g %g\n",rbinc[ir],emiss[ir]);
-
-		//printf("%g %g\n",rbinc[ir],rcount[ir]*(redshift[ir]*redshift[ir])/area[ir]);
 	}
 }
 
