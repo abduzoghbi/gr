@@ -13,11 +13,18 @@ int main() {
 	gr::tetrad		tet( pos , drdt , 0.8 );
 	ph.propagate( pos );
 	*/
+	/*
+	double			pos[4] = { 0 , 10 , 0.5 , 0 };
+	double			drdt[3] = {0,.0,0.17};
+	gr::flash		fl( pos , drdt , 0.98 );
+	fl.illum(1000);
+	*/
 
-	double			pos[4] = { 0 , 10 , 0.05 , 0 };
-	double			drdt[3] = {0,.0,0};
-	gr::flash		fl( pos , drdt , 0.9 );
-	fl.illum(500);
+
+	double		rlim[2] = {1.2,50};
+	gr::disk	disk( "illum.h5" , 80 , rlim  );
+	disk.emissivity();
+
 
 	/*
 	gr::image		im( 0.8 , .8 , 20. );

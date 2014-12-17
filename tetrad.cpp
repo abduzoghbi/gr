@@ -13,7 +13,8 @@ tetrad::tetrad( double rvec_[] , double drdt[] , double spin) {
 	a		=	spin; a2 = a*a;
 	rvec	=	new double[4];
 	tetrad_vec	=	new double*[4];
-	for( int i=0 ; i<4 ; i++ ){ rvec[i] = rvec_[i]; tetrad_vec[i] = new double[4];}
+	itetrad_vec	=	new double*[4];
+	for( int i=0 ; i<4 ; i++ ){ rvec[i] = rvec_[i]; tetrad_vec[i] = new double[4];itetrad_vec[i] = new double[4];}
 	mu		=	1.0;
 	_metric_elements();
 	_drdt_limits( drdt );
@@ -26,11 +27,13 @@ tetrad::tetrad( double rvec_[] , double drdt[] , double spin) {
 
 	_calc_consts_of_motion();
 	calc_tetrad();
+	inv_tetrad();
 }
 
 tetrad::~tetrad() {
 	delete[] rvec;
-	for(int i=0;i<4;i++ ){delete[] tetrad_vec[i];} delete[] tetrad_vec;
+	for(int i=0;i<4;i++ ){delete[] tetrad_vec[i];delete[] itetrad_vec[i];}
+	delete[] tetrad_vec;delete[] itetrad_vec;
 }
 
 /******* Useful Variables *********/
@@ -274,5 +277,24 @@ void tetrad::calc_tetrad(){
 }
 // ========================================== /
 
+
+/****** inverse tetrad *********/
+void tetrad::inv_tetrad(){
+	int				i,j,signum;
+	gsl_matrix		*tet 	= gsl_matrix_alloc(4,4);
+	gsl_matrix		*itet 	= gsl_matrix_alloc(4,4);
+	gsl_permutation	*perm 	= gsl_permutation_alloc(4);
+	for(i=0;i<4;i++){for(j=0;j<4;j++){
+		gsl_matrix_set( tet , i , j , tetrad_vec[i][j] );
+	}}
+	gsl_linalg_LU_decomp ( tet , perm , &signum );
+	gsl_linalg_LU_invert ( tet , perm, itet );
+	for(i=0;i<4;i++){for(j=0;j<4;j++){
+		itetrad_vec[i][j]	=	gsl_matrix_get( itet , i , j );
+	}}
+	gsl_matrix_free( tet );gsl_matrix_free( itet );
+	gsl_permutation_free( perm );
+}
+/*=============================*/
 
 } /* namespace gr */

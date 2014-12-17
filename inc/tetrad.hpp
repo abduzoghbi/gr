@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstdio>
+#include <gsl/gsl_linalg.h>
 
 namespace gr {
 
@@ -30,7 +31,7 @@ public:
 	// -------- Public Variables -------- //
 	double		E,L,Q,a,mu;
 	double		*rvec;
-	double		**tetrad_vec;
+	double		**tetrad_vec,**itetrad_vec;
 	double		td,rd,thd,pd; /* rdot elements */
 
 
@@ -38,8 +39,10 @@ public:
 	/* Initializer takes, position vector, drdt 3-vector, spin */
 	tetrad( double[] , double[] , double );
 	void calc_tetrad();
+	void inv_tetrad();
 	virtual ~tetrad();
 	double operator()(int i, int j) {return tetrad_vec[i][j];}
+	double operator()(int i, int j , int dum ) {return itetrad_vec[i][j];}
 };
 
 } /* namespace gr */
