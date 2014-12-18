@@ -23,7 +23,7 @@ const static double	DTAU_FAC	=	2;
 const static double	RDOT_ZERO	=	1e-12;
 const static double RINF		=	1000;
 const static double STP_ZERO	=	1e-4;
-const static int	NLOOP		=	400;
+const static int	NLOOP		=	1000;
 const static int	NCHANGE		=	5;
 
 class photon {

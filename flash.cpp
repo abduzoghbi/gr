@@ -75,14 +75,14 @@ void flash::illum ( double alpha , double beta , double* out ){
 	ph.propagate( src );
 	out[0]		=	ph.Tau;
 	for( int i=0 ; i<4 ; i++ ){ out[i+1] = ph.rvec[i]; out[i+5] = ph.rdot[i]; }
-	out[9] = consts[0]; out[10] = consts[1]; out[11] = consts[2];
+	//out[9] = consts[0]; out[10] = consts[1]; out[11] = consts[2];
 }
 /* ======================================================================== */
 
 
 /******** flash the source with isotropic num of photons **********/
 void flash::illum( int num , const string fname ){
-	int		i,j,k,nph = num*num, ncol=12;
+	int		i,j,k,nph = num*num, ncol=9;
 	double	*data,*Alpha,*Beta;
 
 	Alpha		=	new double[nph];
@@ -249,7 +249,7 @@ void disk::radial_bins(){
 
 
 		// ---- Getting the area boost factor as seen by lnrf observer ---- //
-		disk_velocity( rbinc[ir] , v_disk );
+		disk_velocity( rbinc[ir] , v_disk , a , rms );
 
 		omega			=	2*a*r/( (r*r+a2)*(r*r+a2) - a2*(r*r-2*r+a2) );
 		src[0] 			= 	0; src[1] = r; src[2] = M_PI/2.; src[3] = 0;
@@ -271,7 +271,7 @@ void disk::radial_bins(){
 
 
 /********* Disk velocity inside and outside the isco *********/
-void disk::disk_velocity( double in_r , double* vel ){
+void disk::disk_velocity( double in_r , double* vel , double a , double rms ){
 
 	double		B,r,r2,a2=a*a,E,L,D,S,A;
 	r		=	( in_r<rms )? rms:in_r;
@@ -330,12 +330,12 @@ void disk::emissivity(){
 
 			// photon Momentum at disk //
 			for( int i=0 ; i<4 ; i++ ) p_at_disk[i] = data[n*ncol+5+i];
-			disk_velocity( r , v_disk );
+			disk_velocity( r , v_disk , a , rms );
 
 			// get redshift //
 			double		dum;
 			// p_dot_v at source is -1
-			dum		=	-p_dot_v( r , th , p_at_disk , v_disk );
+			dum		=	-p_dot_v( r , th , p_at_disk , v_disk , a );
 			redshift[ir]	+=	dum;
 		}
 	}
@@ -367,7 +367,7 @@ void disk::mtm_at_position(double E,double L, double Q, double* pos , double* rd
 
 
 /***** Porject mtm onto a frame moving at v *****/
-double disk::p_dot_v( double r, double th , double* p , double* v ){
+double disk::p_dot_v( double r, double th , double* p , double* v , double a ){
 	double		S,D,r2,a2,sin2,gtt,gtp,grr,gthth,gpp,dum1;
 	r2 = r*r; a2 = a*a; sin2 = sin(th)*sin(th);
 	S			=	r2+a2*(1-sin2); D = r2-2*r+a2;

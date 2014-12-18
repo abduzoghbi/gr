@@ -55,9 +55,7 @@ class disk {
 
 	// -------- Private Functions  -------- //
 	void		radial_bins();
-	void		disk_velocity( double r , double* vel );
 	void 		mtm_at_position(double E,double L, double Q, double* pos , double* rdot );
-	double 		p_dot_v( double r, double th , double* p , double* v );
 	static double disk_area_int_func(double r, void * params){
 		double		res,a2 = *(double*) params,r2=r*r;
 		// srqt( grr * gpp )
@@ -73,6 +71,8 @@ public:
 	disk( const string fname , int nr , double* rlim , bool islog=true );
 	virtual ~disk();
 	void		emissivity();
+	static void	disk_velocity( double r , double* vel , double a, double rms );
+	static double p_dot_v( double r, double th , double* p , double* v , double a );
 };
 
 } /* namespace gr */

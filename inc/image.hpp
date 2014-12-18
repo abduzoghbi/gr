@@ -8,7 +8,7 @@
 #ifndef INC_IMAGE_HPP_
 #define INC_IMAGE_HPP_
 
-#include "photon.hpp"
+#include "flash.hpp"
 
 namespace gr {
 
@@ -21,7 +21,7 @@ class image {
 
 public:
 	// -------- Public Variables -------- //
-	double		a,theta_o,imsize;
+	double		a,theta_o,imsize,rms;
 	double		*rvec;
 
 
@@ -29,6 +29,7 @@ public:
 	image( double , double , double );
 	virtual ~image();
 	void project_image( int );
+	void proj_xy( double x, double y, double* out );
 };
 
 } /* namespace gr */

@@ -50,6 +50,8 @@ void photon::calc_rdot(){
 	thdot2		=	( Q - cos2*(a2*(-E*E) + L*L/sin2) ) / (S*S);
 	rdot2		=	(D/S) * ( E*rdot[0] - L*rdot[3] - S*thdot2 );
 
+	if( fabs(thdot2)<(1e-5*RDOT_ZERO) ) thdot2 = ((thdot2<0)?-1:1)*(1e-5*RDOT_ZERO);
+
 	if( rdot2 < 0 ){
 		if(fabs(rdot2)<RDOT_ZERO and ir_change>NCHANGE){ rsign *= -1; ir_change=0; }
 		throw(1);
