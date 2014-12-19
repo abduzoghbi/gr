@@ -19,13 +19,13 @@ int main() {
 	/*
 	double			pos[4] = { 0 , 10 , 1e-5 , 0 };
 	double			drdt[3] = {0,.0,1e-4};
-	gr::flash		fl( pos , drdt , 1 );
-	fl.illum(1000);
+	gr::flash		fl( pos , drdt , 0.9 );
+	fl.illum(2000);
 	*/
 
 
 	double		rlim[2] = {1.2,100};
-	gr::disk	disk( "illum.h5" , 100  , rlim , 1  );
+	gr::disk	disk( "illum.h5" , 40  , rlim , 40  );
 	//disk.emissivity();
 	disk.tf();
 

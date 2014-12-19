@@ -263,7 +263,7 @@ void disk::tf(){
 
 	// IMAGE SECTION //
 
-	int		npix 		= 	1000;
+	int		npix 		= 	300;
 	int		ntime		=	100;
 	int		nenergy		=	100;
 	double	tLim[2]		=	{ 0 , 200 };
