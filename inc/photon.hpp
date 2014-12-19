@@ -44,6 +44,7 @@ public:
 	double		E,L,Q,a,Tau;
 	int			rsign,thsign;
 	double		*rvec,*rdot;
+	bool		rh_stop;
 
 
 	/**** Public Functions ****/

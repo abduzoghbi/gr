@@ -12,6 +12,9 @@
 #include "photon.hpp"
 #include <omp.h>
 #include <H5Cpp.h>
+#include <gsl/gsl_histogram2d.h>
+#include "image.hpp"
+
 
 
 
@@ -49,8 +52,8 @@ class disk {
 
 
 	// -------- Private Variables  -------- //
-	double		*data,*attr,rLim[2],a,rms,rh,*rbinL,*rbinc,*area,*redshift,*emiss;
-	int			nph,ncol,nr,*rcount;
+	double		*data,*attr,rLim[2],a,rms,rh,*rbinL,*rbinc,*area,*redshift,*emiss,*phiL;
+	int			nph,ncol,nr,*rcount, nphi;
 	bool		islog;
 
 	// -------- Private Functions  -------- //
@@ -68,11 +71,14 @@ public:
 
 
 	// -------- Public Functions -------- //
-	disk( const string fname , int nr , double* rlim , bool islog=true );
+	disk( const string fname , int nr , double* rlim , int np=0, bool islog=true );
 	virtual ~disk();
 	void		emissivity();
 	static void	disk_velocity( double r , double* vel , double a, double rms );
 	static double p_dot_v( double r, double th , double* p , double* v , double a );
+	static double proper_disk_area( double r , double a , double rms );
+	void tf();
+
 };
 
 } /* namespace gr */

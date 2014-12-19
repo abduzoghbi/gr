@@ -14,20 +14,21 @@ int main() {
 	ph.propagate( pos );
 	*/
 	/*
-	double			pos[4] = { 0 , 25 , 1e-5 , 0 };
+	double			pos[4] = { 0 , 10 , 1e-5 , 0 };
 	double			drdt[3] = {0,.0,1e-4};
 	gr::flash		fl( pos , drdt , 1 );
 	fl.illum(1000);
 	*/
 
-	/*
+
 	double		rlim[2] = {1.2,50};
-	gr::disk	disk( "illum.h5" , 60 , rlim  );
-	disk.emissivity();
+	gr::disk	disk( "illum.h5" , 300  , rlim , 300  );
+	//disk.emissivity();
+	disk.tf();
+
+
+	/*
+	gr::image		im( 1 , 1.4 , 40. );
+	im.project_image(200);
 	*/
-
-
-	gr::image		im( 1 , 1. , 20. );
-	im.project_image(100);
-
 }

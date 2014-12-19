@@ -171,7 +171,7 @@ void flash::read_hdf5( const string fname , double *&data , double* &attr , int 
 /**************** Disk CLASS ********************/
 /************************************************/
 
-disk::disk( const string fname , int nr_ , double* rlim , bool islog_ ) {
+disk::disk( const string fname , int nr_ , double* rlim , int np ,bool islog_ ) {
 
 	// Read the flash file //
 	int		dim[2];
@@ -196,13 +196,17 @@ disk::disk( const string fname , int nr_ , double* rlim , bool islog_ ) {
 	if(rLim[0]<rms) rLim[0] = rms;
 	islog	=	islog_;
 
+
+	// Phi bins //
+	if( np != 0 ) nphi = np;
+
 	radial_bins();
 
 }
 
 disk::~disk(){
 	delete[] data; delete[] attr; delete[] rbinL; delete[] rbinc;delete[] rcount;delete[] area;
-	delete[] redshift; delete[] emiss;
+	delete[] redshift; delete[] emiss;delete[] phiL;
 }
 
 
@@ -215,6 +219,7 @@ void disk::radial_bins(){
 	area		=	new double[nr];
 	redshift	=	new double[nr];
 	emiss		=	new double[nr];
+	phiL		=	new double[nphi+1];
 
 	// Work out the radial bins //
 
@@ -231,43 +236,49 @@ void disk::radial_bins(){
 
 	// The coordinate area of each radial bin //
 	// integral of sqrt(grr*gpp)dr dp //
-	double		r,a2=a*a;
-
-	double		omega,src[4],drdt[3],v_disk[4],v_lnrf[4],gamma;
-
-
-
 	for( int ir=0 ; ir<nr ; ir++ ){
 		if( islog ){
 			rbinc[ir]	=	exp( (log(rbinL[ir+1]) + log(rbinL[ir]))/2.0 );
 		}else{
 			rbinc[ir]	=	(rbinL[ir+1] + rbinL[ir])/2.0;
 		}
-		r		=	rbinc[ir];
 		// -------- 2*pi*sqrt[grr*gpp]dr --------- //
-		area[ir]		=	2*M_PI*disk_area_int_func( rbinc[ir] , &a2 ) * ( rbinL[ir+1]-rbinL[ir] );
+		area[ir]		=	2*M_PI*proper_disk_area( rbinc[ir] , a , rms )*( rbinL[ir+1]-rbinL[ir] );
+	}
 
-
-		// ---- Getting the area boost factor as seen by lnrf observer ---- //
-		disk_velocity( rbinc[ir] , v_disk , a , rms );
-
-		omega			=	2*a*r/( (r*r+a2)*(r*r+a2) - a2*(r*r-2*r+a2) );
-		src[0] 			= 	0; src[1] = r; src[2] = M_PI/2.; src[3] = 0;
-		drdt[0] 		= 	0; drdt[1] = 0; drdt[2] = omega;
-		tetrad			lnrf( src , drdt , a );
-
-		// V in lnrf frame //
-		for( int i=0 ; i<4 ; i++ ){
-			v_lnrf[i]	=	0;
-			for( int j=0 ; j<4 ;j++ ){ v_lnrf[i] +=	lnrf(j,i,0) * v_disk[j];}
-		}
-		gamma		=	1/sqrt(1-((v_lnrf[1]*v_lnrf[1])/(v_lnrf[0]*v_lnrf[0])+
-								  (v_lnrf[3]*v_lnrf[3])/(v_lnrf[0]*v_lnrf[0]) ));
-		area[ir]	=	area[ir]*gamma;
-
+	for( int ip=0 ; ip<=nphi ; ip++ ){
+		phiL[ip]	=	(M_PI*2)*ip/nphi;
 	}
 }
 /*====================================*/
+
+
+/******** Proper area of disk element **********/
+/* actual area is proper_disk_area(r)*dr*dphi */
+double disk::proper_disk_area( double r , double a , double rms ){
+	double			area,a2=a*a,v_disk[4],omega,src[4],drdt[3],v_lnrf[4],gamma;
+	area		=	disk_area_int_func( r , &a2 );
+
+
+	// ---- Getting the area boost factor as seen by lnrf observer ---- //
+	disk_velocity( r , v_disk , a , rms );
+
+	omega			=	2*a*r/( (r*r+a2)*(r*r+a2) - a2*(r*r-2*r+a2) );
+	src[0] 			= 	0; src[1] = r; src[2] = M_PI/2.; src[3] = 0;
+	drdt[0] 		= 	0; drdt[1] = 0; drdt[2] = omega;
+	tetrad			lnrf( src , drdt , a );
+
+	// V in lnrf frame //
+	for( int i=0 ; i<4 ; i++ ){
+		v_lnrf[i]	=	0;
+		for( int j=0 ; j<4 ;j++ ){ v_lnrf[i] +=	lnrf(j,i,0) * v_disk[j];}
+	}
+	gamma		=	1/sqrt(1-((v_lnrf[1]*v_lnrf[1])/(v_lnrf[0]*v_lnrf[0])+
+							  (v_lnrf[3]*v_lnrf[3])/(v_lnrf[0]*v_lnrf[0]) ));
+	area		=	area*gamma;
+	return area;
+}
+/*==============================================*/
 
 
 /********* Disk velocity inside and outside the isco *********/
@@ -381,5 +392,131 @@ double disk::p_dot_v( double r, double th , double* p , double* v , double a ){
 					gpp * p[3]*v[3] + grr * p[1]*v[1] + gthth * p[2]*v[2];
 	return dum1;
 }
+
+
+/***** TF from source to disk and to observer *****/
+void disk::tf(){
+	int		npix 		= 	300;
+	int		nhist		=	50;
+	double	lim[4]		=	{ 0.5 , 2 , 0 , 200 };
+	double	imsize		=	200.;
+	double	theta_o		=	1.4;
+
+
+	// read flash data //
+	double		r,th,phi,redshift,tsource = 0;
+	double		p_at_disk[4],v_disk[4],*Area,*Count,*Redshift,*Time;
+	int			it=0;
+	gsl_histogram2d		*r_phi_count 		= gsl_histogram2d_alloc( nr , nphi );
+	gsl_histogram2d		*r_phi_redshift 	= gsl_histogram2d_alloc( nr , nphi );
+	gsl_histogram2d		*r_phi_time 		= gsl_histogram2d_alloc( nr , nphi );
+
+	Area		=	new double[nr*nphi];
+	Count		=	new double[nr*nphi];
+	Redshift	=	new double[nr*nphi];
+	Time		=	new double[nr*nphi];
+
+	gsl_histogram2d_set_ranges ( r_phi_count, rbinL, nr+1, phiL, nphi+1);
+	gsl_histogram2d_set_ranges ( r_phi_redshift, rbinL, nr+1, phiL, nphi+1);
+	gsl_histogram2d_set_ranges ( r_phi_time, rbinL, nr+1, phiL, nphi+1);
+
+	// Count the number of photons in each radial bin //
+	for ( int n=0 ; n<nph ; n++ ){
+		r	=	data[n*ncol + 2 ];
+		th	=	data[n*ncol + 3 ];
+		phi	=	data[n*ncol + 4 ];
+		if( fabs( th-M_PI/2. )<1e-2 and r>=rbinL[0] and r<=rbinL[nr] ){
+			gsl_histogram2d_increment ( r_phi_count , r , phi );
+
+			// photon momentum at source (=1) and at disk to get redshift factor //
+			// photon Momentum at disk //
+			for( int i=0 ; i<4 ; i++ ) p_at_disk[i] = data[n*ncol+5+i];
+			disk_velocity( r , v_disk , a , rms );
+
+			// get redshift //
+			// p_dot_v at source is -1
+			redshift		=	-p_dot_v( r , th , p_at_disk , v_disk , a );
+			gsl_histogram2d_accumulate (r_phi_redshift , r , phi , redshift );
+			gsl_histogram2d_accumulate (r_phi_time , r , phi , data[n*ncol + 1] );
+		}
+		if( r == 1000 ){
+			tsource += data[ n*ncol + 1 ];
+			it++;
+		}
+	}
+	tsource		/=	it;
+
+
+	double		lo,hi,dr,dphi,count,dA;
+	for( int i=0 ; i<nr ; i++ ){
+		gsl_histogram2d_get_xrange( r_phi_count , i , &lo , &hi );
+		r		=	(hi+lo)/2;
+		dr		=	hi-lo;
+		for( int j=0 ; j<nphi ; j++ ){
+			gsl_histogram2d_get_yrange( r_phi_count , j , &lo , &hi );
+			dphi	=	hi-lo;
+
+			count		=	gsl_histogram2d_get( r_phi_count , i , j );
+			redshift	=	gsl_histogram2d_get( r_phi_redshift , i , j ) / count;
+			dA			=	proper_disk_area( r , a , rms ) * dr * dphi;
+			Area[i*nr + j  ]	=	dA;
+			Count[i*nr + j ]	=	count;
+			Redshift[i*nr + j ]	=	redshift;
+			Time[i*nr + j]		=	gsl_histogram2d_get( r_phi_time , i , j ) / count;
+		}
+	}
+	// END FLASH SECTION //
+
+
+
+	// IMAGE SECTION //
+	int		i,j,nside,idx;
+	long unsigned int	iir,iip;
+	double	unit,x,y, out[4],flux,illum_flux,g,time;
+	gsl_histogram2d		*g_t	=	gsl_histogram2d_alloc( nhist,nhist );
+	gsl_histogram2d_set_ranges_uniform ( g_t, lim[0], lim[1], lim[2], lim[3]);
+	image		im( a , theta_o , imsize );
+
+
+	/* npix should be odd to have symmetry */
+	if( npix%2 == 0) npix++;
+	nside	=	(npix-1)/2;
+
+	unit	=	imsize/npix;
+	for( i=-nside ; i<=nside ; i++ ){
+		x	=	unit * i;
+		for( j=-nside ; j<=nside ; j++ ){
+			y	=	unit * j;
+			im.proj_xy( x , y , out );
+			r		=	out[1]; phi = out[2]; g = out[3]; time = out[0];
+
+			if(r<rbinL[0] or r>rbinL[nr]) continue;
+			gsl_histogram2d_find ( r_phi_count , r, phi, &iir, &iip );
+			idx			=	iir*nr + iip;
+			dA			=	Area[ idx ];
+			redshift	=	Redshift[ idx ];
+			count		=	Count[ idx ];
+			illum_flux	=	count * redshift * redshift / dA ;
+
+			flux		=	illum_flux * pow(g,3)/dA;
+			gsl_histogram2d_accumulate ( g_t, g, time+Time[ idx ] - tsource, flux);
+		}
+	}
+
+	printf("ycent ");for( i=0 ; i<nhist ; i++ ){gsl_histogram2d_get_xrange ( g_t, i, &lo, &hi);printf("%g ",(lo+hi)/2);}printf("\n");
+	printf("xcent ");for( i=0 ; i<nhist ; i++ ){gsl_histogram2d_get_yrange ( g_t, i, &lo, &hi);printf("%g ",(lo+hi)/2);}printf("\n");
+	for( i=0 ; i<nhist ; i++ ){
+		for( j=0 ; j<nhist ; j++ ){
+			printf("%g ",gsl_histogram2d_get ( g_t, i, j ));
+		}
+		printf("\n");
+	}
+	gsl_histogram2d_free(g_t);
+	gsl_histogram2d_free(r_phi_count);
+	gsl_histogram2d_free(r_phi_redshift);
+	gsl_histogram2d_free(r_phi_time);
+	delete[] Area;delete[] Count;delete[] Redshift;delete[] Time;
+}
+/*================================================*/
 
 } /* namespace gr */

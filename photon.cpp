@@ -18,6 +18,7 @@ photon::photon(double e,double l,double q,double spin,int rs, int ths) {
 	thsign	=	ths;
 	a2		=	a*a;
 	rh		=	1 + sqrt(1-a2);
+	rh_stop	=	false;
 
 	rvec	=	new double[4];
 	rdot	=	new double[4];
@@ -74,7 +75,7 @@ void photon::calc_rdot(){
 void photon::propagate( double src[] ) {
 
 	int			iter,i;
-	double		diff,err,tau,tau_c,dtau = 0.001,halfpi=M_PI/2.;
+	double		diff,err,tau,tau_c,dtau = 0.001,halfpi=M_PI/2.,twopi=M_PI*2;
 	double		*rvec_c,*rvec_tmp,*rvec_err;
 	bool		stopping;
 
@@ -133,7 +134,7 @@ void photon::propagate( double src[] ) {
 		}
 
 		/* If at the Horizon, stop */
-		if ( (rvec_tmp[1]-rh) < STP_ZERO ) {stopping	=	true;}
+		if ( (rvec_tmp[1]-rh) < STP_ZERO ) {stopping	=	true; rh_stop	=	true;}
 
 
 		/* Are we at the disk at halfpi ? */
@@ -145,6 +146,13 @@ void photon::propagate( double src[] ) {
 			dtau	/=	(DTAU_FAC*DTAU_FAC);
 			for( i=0 ; i<4 ; i++){ rvec_tmp[i] = rvec_c[i]; }
 			continue;
+		}
+
+		// is theta negative? //
+		if ( rvec_tmp[2] < 0 ) {
+			rvec_tmp[2]		*=	-1;
+			rvec_tmp[3]		+=	M_PI;
+			thsign *= -1; ith_change=0;
 		}
 
 
@@ -162,6 +170,8 @@ void photon::propagate( double src[] ) {
 			try{
 				calc_rdot();
 				Tau		=	tau_c;
+				while( rvec[3] > twopi ) rvec[3] -= twopi;
+				while( rvec[3] < 0 ) rvec[3] += twopi;
 			}catch( int ie ){
 				diff = sqrt(-1);
 				rdot[0] = diff;rdot[1] = diff;rdot[2] = diff; rdot[3] = diff;Tau = 0;

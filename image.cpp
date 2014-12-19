@@ -38,29 +38,50 @@ image::~image() {
 
 /******* Project image to disk using npix in each side *********/
 void image::project_image( int npix ){
-	int		i,j,nside;
-	double	unit,x,y, out[4];
+	int		i,j,ii,jj,nside;
+	double	unit,x,y,dx,dy,dr,dphi,dA, out[4],outp[4],outn[4],*flux;
+
 
 	/* npix should be odd to have symmetry */
 	if( npix%2 == 0) npix++;
 	nside	=	(npix-1)/2;
+	flux	=	new double[npix*npix];
 
 	unit	=	imsize/npix;
 
-	for( i=-nside ; i<=nside ; i++ ){
+	printf("xcent ");for( i=-nside;i<=nside;i++) {printf("%g ",unit*i);}printf("\n");
+	printf("ycent ");for( i=-nside;i<=nside;i++) {printf("%g ",unit*i);}printf("\n");
+
+	for( i=-nside,ii=0 ; i<=nside ; i++ ){
 		x	=	unit * i;
-		for( j=-nside ; j<=nside ; j++ ){
+		dx	=	fabs(unit*(i+1) - x);
+		for( j=-nside,jj=0 ; j<=nside ; j++ ){
 			y	=	unit * j;
+			dy	=	fabs(unit*(j+1) - y);
 			proj_xy( x , y , out );
+			/*
+			proj_xy( x-dx/2 , y-dy/2 , outn );
+			proj_xy( x+dx/2 , y+dy/2 , outp );
+			dr		=	fabs(outp[1] - outn[1]);
+			dphi	=	fabs(outp[2] - outn[2]);
+			*/
+			dA		=	disk::proper_disk_area( out[1] , a , rms ) ;//* dphi * dr;
+			flux[ii*npix + jj]	=	pow(out[3],3)/dA;
+
+			printf("%g ", flux[ ii*npix + jj]);
+			jj++;
 		}
+		printf("\n");
+		ii++;
 	}
+	delete[] flux;
 }
 /*=============================================================*/
 
 
 /******** Project a photon from x,y and get r,phi,g,t **********/
 void image::proj_xy( double x , double y , double* out ){
-	double			E,L,Q,vel[4],g;
+	double			E,L,Q,vel[4],g,twopi=2*M_PI;;
 	int				thsign;
 
 	if(fabs(x)<1e-6) { x = (x<0)?-1e-6:1e-6;}
@@ -73,13 +94,19 @@ void image::proj_xy( double x , double y , double* out ){
 	thsign	=	(y<0)?1:-1;
 	photon		ph( E , L , Q , a , -1 , thsign );
 	ph.propagate( rvec );
-	disk::disk_velocity( ph.rvec[1] , vel , a , rms );
-	g		=	-disk::p_dot_v( ph.rvec[1] , ph.rvec[2] , ph.rdot , vel , a );
+	if( ph.rh_stop ){
+		g	=	0;
+	}else{
+		disk::disk_velocity( ph.rvec[1] , vel , a , rms );
+		g		=	-disk::p_dot_v( ph.rvec[1] , ph.rvec[2] , ph.rdot , vel , a );
+	}
 	out[0]	=	ph.rvec[0];		// t
 	out[1]	=	ph.rvec[1];		// r
 	out[2]	=	ph.rvec[3];		// phi
 	out[3]	=	g;				// g
 }
 /*=============================================================*/
+
+
 
 } /* namespace gr */
