@@ -18,13 +18,17 @@ photon::photon(double e,double l,double q,double spin,int rs, int ths) {
 	thsign	=	ths;
 	a2		=	a*a;
 	rh		=	1 + sqrt(1-a2);
-	rh_stop	=	false;
+	rh_stop		=	false;
+	disk_stop	=	false;
+	inf_stop	=	false;
 
 	rvec	=	new double[4];
 	rdot	=	new double[4];
 }
 
-photon::~photon() {}
+photon::~photon() {
+	delete[] rvec; delete[] rdot;
+}
 
 
 /******* Useful Variables *********/
@@ -131,6 +135,7 @@ void photon::propagate( double src[] ) {
 			rvec_tmp[0]	-=	diff;
 			rvec_tmp[1]	=	RINF;
 			stopping	=	true;
+			inf_stop	=	true;
 		}
 
 		/* If at the Horizon, stop */
@@ -138,7 +143,7 @@ void photon::propagate( double src[] ) {
 
 
 		/* Are we at the disk at halfpi ? */
-		if( fabs( rvec_tmp[2] - halfpi ) < STP_ZERO ) { stopping = true;}
+		if( fabs( rvec_tmp[2] - halfpi ) < STP_ZERO ) { stopping = true; disk_stop = true;}
 
 		// Or are we close to HALF_PI? //
 		if( ( rvec_tmp[2] - halfpi ) >= STP_ZERO and not stopping ){
@@ -186,6 +191,7 @@ void photon::propagate( double src[] ) {
 	delete[] rvec_c;
 	delete[] rvec_tmp;
 	delete[] rvec_err;
+	gsl_odeiv2_step_free( stepper );
 	/* ----------------------- */
 
 

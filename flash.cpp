@@ -108,6 +108,10 @@ void flash::illum( int num , const string fname ){
 
 
 	write_hdf5( data , nph , ncol , fname );
+
+	delete[] Alpha;
+	delete[] Beta;
+	delete[] data;
 }
 /* ============================================================== */
 
@@ -170,7 +174,7 @@ void flash::read_hdf5( const string fname , double *&data , double* &attr , int 
 /************************************************/
 /**************** Disk CLASS ********************/
 /************************************************/
-
+/*
 disk::disk( const string fname , int nr_ , double* rlim , int np ,bool islog_ ) {
 
 	// Read the flash file //
@@ -208,9 +212,10 @@ disk::~disk(){
 	delete[] data; delete[] attr; delete[] rbinL; delete[] rbinc;delete[] rcount;delete[] area;
 	delete[] redshift; delete[] emiss;delete[] phiL;
 }
-
+*/
 
 /******* Radial bins and areas ********/
+/*
 void disk::radial_bins(){
 
 	rbinL		=	new double[nr+1];
@@ -250,11 +255,13 @@ void disk::radial_bins(){
 		phiL[ip]	=	(M_PI*2)*ip/nphi;
 	}
 }
+*/
 /*====================================*/
 
 
 /******** Proper area of disk element **********/
 /* actual area is proper_disk_area(r)*dr*dphi */
+/*
 double disk::proper_disk_area( double r , double a , double rms ){
 	double			area,a2=a*a,v_disk[4],omega,src[4],drdt[3],v_lnrf[4],gamma;
 	area		=	disk_area_int_func( r , &a2 );
@@ -278,10 +285,12 @@ double disk::proper_disk_area( double r , double a , double rms ){
 	area		=	area*gamma;
 	return area;
 }
+*/
 /*==============================================*/
 
 
 /********* Disk velocity inside and outside the isco *********/
+/*
 void disk::disk_velocity( double in_r , double* vel , double a , double rms ){
 
 	double		B,r,r2,a2=a*a,E,L,D,S,A;
@@ -310,10 +319,12 @@ void disk::disk_velocity( double in_r , double* vel , double a , double rms ){
 		vel[3]	=	B;
 	}
 }
+*/
 /*===========================================================*/
 
 
 /************* Calculate disk emissivity **********/
+/*
 void disk::emissivity(){
 
 	double		r,th;
@@ -356,8 +367,9 @@ void disk::emissivity(){
 		printf("%g %g\n",rbinc[ir],emiss[ir]);
 	}
 }
-
+*/
 /***** Calculate photon momentum at a given position given its consts of motion *****/
+/*
 void disk::mtm_at_position(double E,double L, double Q, double* pos , double* rdot ){
 	double		r,r2,a2,D,A,S,sin2,cos2,thdot2,rdot2;
 	r		=	pos[1]; r2 = r*r; a2 = a*a;
@@ -374,10 +386,12 @@ void disk::mtm_at_position(double E,double L, double Q, double* pos , double* rd
 	rdot[1]		=	sqrt(rdot2);
 	rdot[2]		=	sqrt(thdot2);
 }
+*/
 /*==================================================================================*/
 
 
 /***** Porject mtm onto a frame moving at v *****/
+/*
 double disk::p_dot_v( double r, double th , double* p , double* v , double a ){
 	double		S,D,r2,a2,sin2,gtt,gtp,grr,gthth,gpp,dum1;
 	r2 = r*r; a2 = a*a; sin2 = sin(th)*sin(th);
@@ -392,9 +406,10 @@ double disk::p_dot_v( double r, double th , double* p , double* v , double a ){
 					gpp * p[3]*v[3] + grr * p[1]*v[1] + gthth * p[2]*v[2];
 	return dum1;
 }
-
+*/
 
 /***** TF from source to disk and to observer *****/
+/*
 void disk::tf(){
 	int		npix 		= 	300;
 	int		nhist		=	50;
@@ -478,7 +493,7 @@ void disk::tf(){
 	image		im( a , theta_o , imsize );
 
 
-	/* npix should be odd to have symmetry */
+	// npix should be odd to have symmetry //
 	if( npix%2 == 0) npix++;
 	nside	=	(npix-1)/2;
 
@@ -517,6 +532,7 @@ void disk::tf(){
 	gsl_histogram2d_free(r_phi_time);
 	delete[] Area;delete[] Count;delete[] Redshift;delete[] Time;
 }
+*/
 /*================================================*/
 
 } /* namespace gr */
