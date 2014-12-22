@@ -9,39 +9,34 @@
 
 namespace gr {
 
-flash::flash( double s[] , double drt[] , double spin ) {
+flash::flash( double s[] , double drdt[] , double spin ) {
 	a		=	spin;
 	src		=	new double[4];
-	drdt	=	new double[3];
 	for( int i=0 ; i<4 ; i++ ){ src[i]  = s[i]; }
-	for( int i=0 ; i<3 ; i++ ){ drdt[i] = drt[i]; }
 
 	tet		=	new tetrad( src , drdt , spin );
 }
 
 flash::~flash() {
 	delete[] src;
-	delete[] drdt;
 	delete tet;
 }
 
 /******** Const of motion for a given alpha,beta in source frame **********/
-void flash::const_of_motion ( double alpha, double beta , double* consts , int* sign ){
+void flash::const_of_motion ( double alpha, double beta , double* consts , int* sign , double* src , tetrad& tet){
 	double		pt[4],rd[4];
 	int			i,j;
-	double		dum;
 
 	/* Momentum in emitting source frame */
 	pt[0]		=	1.0;
-	pt[1]		=	cos(alpha);
+	pt[1]		=	sin(alpha)*sin(beta);
 	pt[2]		=	sin(alpha)*cos(beta);
-	pt[3]		=	sin(alpha)*sin(beta);
+	pt[3]		=	cos(alpha);
 
 	/* Momentum in coordinate frame */
 	for( i=0 ; i<4 ; i++ ){
-		dum		=	0;
-		for( j=0 ; j<4 ;j++ ){ dum +=	tet->tetrad_vec[j][i] * pt[j];}
-		rd[i]	=	dum;
+		rd[i]		=	0;
+		for( j=0 ; j<4 ;j++ ){ rd[i] +=	tet(j,i) * pt[j];}
 	}
 
 	/* Now get constants of motion given rdot */
@@ -67,22 +62,20 @@ void flash::const_of_motion ( double alpha, double beta , double* consts , int* 
 
 
 /******** illuminate the source with a photon at given alpha, beta **********/
-void flash::illum ( double alpha , double beta , double* out ){
+void flash::illum ( double alpha , double beta , double* out , double* src, tetrad& tet){
 	double		consts[3];
 	int			sign[2];
-	const_of_motion( alpha , beta , consts , sign );
+	for(int i=0; i<4 ; i++ ) out[i] = src[i];
+	const_of_motion( alpha , beta , consts , sign , src , tet );
 	photon	ph( consts[0] , consts[1] , consts[2] , a , sign[0] , sign[1] );
-	ph.propagate( src );
-	out[0]		=	ph.Tau;
-	for( int i=0 ; i<4 ; i++ ){ out[i+1] = ph.rvec[i]; out[i+5] = ph.rdot[i]; }
-	//out[9] = consts[0]; out[10] = consts[1]; out[11] = consts[2];
+	ph.propagate( &(out[0]) , &(out[4]) );
 }
 /* ======================================================================== */
 
 
 /******** flash the source with isotropic num of photons **********/
 void flash::illum( int num , const string fname ){
-	int		i,j,k,nph = num*num, ncol=9;
+	int		i,j,k,nph = num*num, ncol=8;
 	double	*data,*Alpha,*Beta;
 
 	Alpha		=	new double[nph];
@@ -92,17 +85,30 @@ void flash::illum( int num , const string fname ){
 	k = 0;
 	for( i=0 ; i<num ; i++ ){
 		for( j=0 ; j<num ; j++ ){
-			Alpha[k]	=	acos( i*2.0/(num-1) - 1);
-			Beta[k]		=	2*M_PI*j/(num-1);
+			Alpha[k]	=	acos( 1- i*2.0/(num-1) );
+			Beta[k]		=	2.*M_PI*j/(num);
 			k++;
 		}
 	}
-
+	/*
+	double		SRC[4];
+	for( int i=0 ; i<4 ; i++ ) SRC[i] = src[i];
+	tetrad		TET(*tet);
+	k = 1;
+	illum( Alpha[k] , Beta[k] , &data[k*ncol] , SRC, TET );
+	exit(0);
+	*/
 #pragma omp parallel
 {
-	#pragma omp for schedule(dynamic,num) private(k)
-	for( k=0 ; k<nph ; k++ ){
-		illum( Alpha[k] , Beta[k] , &data[k*ncol] );
+	// Some variables to avoid calling globals in parallel //
+	double		SRC[4];
+	for( int i=0 ; i<4 ; i++ ) SRC[i] = src[i];
+	tetrad		TET(*tet);
+
+
+	#pragma omp for schedule(dynamic,num)
+	for( int k=0 ; k<nph ; k++ ){
+		illum( Alpha[k] , Beta[k] , &data[k*ncol] , SRC, TET );
 	}
 } // end pragma omp parallel
 

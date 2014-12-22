@@ -29,35 +29,32 @@ const static int	NCHANGE		=	5;
 class photon {
 
 	/**** Private Variables ****/
-	double		a2,rh;
-	double		r,r2,sin1,sin2,cos1,cos2,D,S,DS,A;
 	int			ir_change,ith_change;
 
 
 	/**** Private Functions ****/
-	void		_setup_vars();
-	void		_const_of_motion();
+	void		_const_of_motion(const double* rvec, double* rdot );
+	static int	 int_func(double t, const double* r, double* rdot, void *params);
 
 
 public:
 	/**** Public Variables ****/
-	double		E,L,Q,a,Tau;
+	double		E,L,Q,a;
 	int			rsign,thsign;
-	double		*rvec,*rdot;
 	bool		rh_stop,disk_stop,inf_stop;
 
 
 	/**** Public Functions ****/
 	photon(double,double,double,double,int,int);
 	virtual ~photon();
-	void 		calc_rdot();
-	void		propagate( double* src );
-	void		_print_xyz();
+	void 		calc_rdot( const double* rvec , double* rdot );
+	void		propagate( double* rvec, double* rdot );
+	void		_print_xyz( const double* rvec );
 };
 
 
 // INTEGRATION FUNCTION //
-int func (double t, const double r[], double rdot[], void *params);
+//int func (double t, const double r[], double rdot[], void *params);
 
 } /* namespace gr */
 

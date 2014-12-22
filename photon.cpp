@@ -16,38 +16,30 @@ photon::photon(double e,double l,double q,double spin,int rs, int ths) {
 	a		=	spin;
 	rsign	=	rs;
 	thsign	=	ths;
-	a2		=	a*a;
-	rh		=	1 + sqrt(1-a2);
 	rh_stop		=	false;
 	disk_stop	=	false;
 	inf_stop	=	false;
 
-	rvec	=	new double[4];
-	rdot	=	new double[4];
 }
 
-photon::~photon() {
-	delete[] rvec; delete[] rdot;
-}
+photon::~photon() {}
 
 
-/******* Useful Variables *********/
-void photon::_setup_vars(){
+
+/******* Calculate rdot vector *********/
+void photon::calc_rdot( const double* rvec , double* rdot ){
+	double		rdot2,thdot2;
+
+	// ---- Setup vars ---- //
+	double		r,r2,sin2,cos2,D,S,DS,A,a2=a*a;
 	r		=	rvec[1]; r2 = r*r;
-	sin1	=	sin( rvec[2] ); sin2 = sin1*sin1;
-	cos1	=	cos( rvec[2] ); cos2 = cos1*cos1;
+	sin2	=	sin( rvec[2] ); sin2 = sin2*sin2;
+	cos2 	= 	1-sin2;
 	D		=	r2 - 2*r + a2;
 	S		=	r2 + a2*cos2;
 	DS		=	D*S;
 	A		=	(r2+a2)*(r2+a2) - a2*D*sin2;
-}
-/* =============================== */
-
-
-/******* Calculate rdot vector *********/
-void photon::calc_rdot(){
-	double		rdot2,thdot2;
-	_setup_vars();
+	// ------------------- //
 
 	rdot[0]		=	(A*E - 2*a*r*L) / DS;
 	rdot[3]		=	( 2*a*r*E + L*(D/sin2 - a2) ) / DS;
@@ -55,15 +47,18 @@ void photon::calc_rdot(){
 	thdot2		=	( Q - cos2*(a2*(-E*E) + L*L/sin2) ) / (S*S);
 	rdot2		=	(D/S) * ( E*rdot[0] - L*rdot[3] - S*thdot2 );
 
+
 	if( fabs(thdot2)<(1e-5*RDOT_ZERO) ) thdot2 = ((thdot2<0)?-1:1)*(1e-5*RDOT_ZERO);
 
 	if( rdot2 < 0 ){
 		if(fabs(rdot2)<RDOT_ZERO and ir_change>NCHANGE){ rsign *= -1; ir_change=0; }
-		throw(1);
+		rdot[0]	=	-1; // will be caught outside
+		return;
 	}
 	if( thdot2 < 0 ){
 		if(fabs(thdot2)<RDOT_ZERO and ith_change>NCHANGE){thsign *= -1; ith_change=0;}
-		throw(2);
+		rdot[0]	=	-1; // will be caught outside
+		return;
 	}
 
 	rdot[1]		=	rsign  * sqrt( rdot2  );
@@ -76,24 +71,24 @@ void photon::calc_rdot(){
 
 
 /******* Propagate a photon from a position pos *********/
-void photon::propagate( double src[] ) {
+void photon::propagate( double* rvec, double* rdot ) {
 
-	int			iter,i;
-	double		diff,err,tau,tau_c,dtau = 0.001,halfpi=M_PI/2.,twopi=M_PI*2;
+	int			iter,i,status;
+	double		diff,err,tau,tau_c,dtau = 0.001,halfpi=M_PI/2.,twopi=M_PI*2,rh;
 	double		*rvec_c,*rvec_tmp,*rvec_err;
 	bool		stopping;
 
-	gsl_odeiv2_system				sys = { func , NULL , 4, (void*)(this) };
+	gsl_odeiv2_system				sys = { int_func , NULL , 4, (void*)(this) };
 	const gsl_odeiv2_step_type 		*step = gsl_odeiv2_step_rkf45;
 	gsl_odeiv2_step					*stepper = gsl_odeiv2_step_alloc ( step , 4 );
 
 
 	/* INITIALIZE SOME VARIALES */
-
+	rh			=	1 + sqrt(1-a*a);
 	rvec_c		=	new double[4];
 	rvec_tmp	=	new double[4];
 	rvec_err	=	new double[4];
-	for( i=0 ; i<4 ; i++ ){ rvec_c[i] = src[i]; rvec[i] = src[i]; rvec_tmp[i] = src[i];}
+	for( i=0 ; i<4 ; i++ ){ rvec_c[i] = rvec[i]; rvec_tmp[i] = rvec[i];}
 	tau			=	0;
 	tau_c		=	0;
 	ir_change	=	0;
@@ -107,9 +102,8 @@ void photon::propagate( double src[] ) {
 	/* START THE INTEGRATION LOOP */
 	for ( iter=1 ; iter<= NLOOP ; iter++ ){
 
-		try{
-			gsl_odeiv2_step_apply ( stepper , tau , dtau, rvec_tmp, rvec_err, NULL, NULL , &sys);
-		}catch( int ie ){
+		status	=	gsl_odeiv2_step_apply ( stepper , tau , dtau, rvec_tmp, rvec_err, NULL, NULL , &sys);
+		if( status ){ // something is wrong
 			tau		=	tau_c;
 			for( i=0 ; i<4 ; i++){ rvec_tmp[i] = rvec_c[i]; }
 			dtau	/=	DTAU_FAC;
@@ -167,19 +161,18 @@ void photon::propagate( double src[] ) {
 		ir_change++; ith_change++;
 
 
-		//_print_xyz();
-		//_const_of_motion();
+		//_print_xyz(rvec);
+		//calc_rdot( rvec , rdot );_const_of_motion(rvec,rdot);
 		//for( i=0 ;i<4 ; i++ ) { printf("%3.3e ",rvec[i]);} printf("%3.3e %3.3e %3d\n",tau,dtau,iter);
 
 		if ( stopping ) {
-			try{
-				calc_rdot();
-				Tau		=	tau_c;
+			calc_rdot( rvec , rdot );
+			if( rdot[0] != -1 ){
 				while( rvec[3] > twopi ) rvec[3] -= twopi;
 				while( rvec[3] < 0 ) rvec[3] += twopi;
-			}catch( int ie ){
+			}else{
 				diff = sqrt(-1);
-				rdot[0] = diff;rdot[1] = diff;rdot[2] = diff; rdot[3] = diff;Tau = 0;
+				rdot[0] = diff;rdot[1] = diff;rdot[2] = diff; rdot[3] = diff;
 			}
 			break;
 		}
@@ -200,9 +193,16 @@ void photon::propagate( double src[] ) {
 
 
 /******** check constants of motion for debugging **********/
-void photon::_const_of_motion(){
+void photon::_const_of_motion(const double* rvec , double* rdot ){
 	double	e,l,q,int1;
-	calc_rdot();
+	calc_rdot( rvec , rdot );
+	double		r,r2,sin2,cos2,D,S,a2=a*a;
+	r		=	rvec[1]; r2 = r*r;
+	sin2	=	sin( rvec[2] ); sin2 = sin2*sin2;
+	cos2 	= 	1-sin2;
+	D		=	r2 - 2*r + a2;
+	S		=	r2 + a2*cos2;
+
 	e		=	(1-2*r/S)*rdot[0] + (2*a*r*sin2/S)*rdot[3];
 	l		=	(-2*a*r*sin2/S)*rdot[0] + (r2+a2+2*a2*r*sin2/S)*sin2*rdot[3];
 	q		=	(S*S*rdot[2]*rdot[2]) + cos2*( a2*(-e*e) + l*l/sin2);
@@ -216,20 +216,17 @@ void photon::_const_of_motion(){
 
 
 /******* INTEGRATION FUNCTION ********/
-int func (double t, const double r[], double drdt[], void *params) {
-	int		i;
+int photon::int_func (double t, const double* r, double* drdt, void *params) {
 	photon	*ph = &(*(photon *)params);
-	for( i=0 ; i<4 ; i++ ){ ph->rvec[i] = r[i];}
-	ph->calc_rdot();
-	for( i=0 ; i<4 ; i++ ){ drdt[i] = ph->rdot[i];}
-
+	ph->calc_rdot( r , drdt );
+	if( drdt[0] == -1 ) return -1; // something is wrong
 	return GSL_SUCCESS;
 }
 /* ================================= */
 
 
 /******** Print coordinates in x,t,z for debugging **********/
-void photon::_print_xyz(){
+void photon::_print_xyz( const double* rvec ){
 	double	x,y,z,r,th,phi;
 	r = rvec[1]; th=rvec[2]; phi=rvec[3];
     x		=	r*cos(phi)*sin(th);

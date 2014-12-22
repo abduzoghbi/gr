@@ -36,6 +36,30 @@ tetrad::~tetrad() {
 	delete[] tetrad_vec;delete[] itetrad_vec;
 }
 
+/******** Copy constructor *********/
+tetrad::tetrad( tetrad& intet ){
+	a		=	intet.a; a2 = a*a;
+	rvec	=	new double[4];
+	tetrad_vec	=	new double*[4];
+	itetrad_vec	=	new double*[4];
+	for( int i=0 ; i<4 ; i++ ){
+		rvec[i] = intet.rvec[i];
+		tetrad_vec[i] = new double[4];itetrad_vec[i] = new double[4];
+		for( int j=0 ; j<4 ; j++ ){
+			tetrad_vec[i][j]	=	intet.tetrad_vec[i][j];
+			itetrad_vec[i][j]	=	intet.itetrad_vec[i][j];
+		}
+	}
+	mu		=	1.0;
+	td		=	intet.td;
+	rd		=	intet.rd;
+	thd		=	intet.thd;
+	pd		=	intet.pd;
+
+}
+/*=================================*/
+
+
 /******* Useful Variables *********/
 void tetrad::_setup_vars(){
 	r		=	rvec[1]; r2 = r*r;

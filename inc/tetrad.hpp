@@ -38,6 +38,7 @@ public:
 	// -------- Public Functions -------- //
 	/* Initializer takes, position vector, drdt 3-vector, spin */
 	tetrad( double[] , double[] , double );
+	tetrad(tetrad&);
 	void calc_tetrad();
 	void inv_tetrad();
 	virtual ~tetrad();

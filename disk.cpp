@@ -65,7 +65,7 @@ disk::disk( const string fname , int nr_ , double* rlim , int np ,bool rlog_ ) {
 		area[ir] = new double[nphi];
 		for( int ip = 0 ; ip<nphi ; ip++ ){
 			dphi			=	(phiL[ip+1] - phiL[ip]);
-			area[ir][ip]	= 	dum * dphi;;
+			area[ir][ip]	= 	dum * dphi;
 		}
 	}
 }
@@ -154,9 +154,9 @@ void disk::emissivity(){
 
 	// Count the number of photons in each radial bin //
 	for ( int n=0 ; n<nph ; n++ ){
-		r	=	data[n*ncol + 2 ];
-		th	=	data[n*ncol + 3 ];
-		phi	=	data[n*ncol + 4 ];
+		r	=	data[n*ncol + 1 ];
+		th	=	data[n*ncol + 2 ];
+		phi	=	data[n*ncol + 3 ];
 
 		if( cos( th )<1e-2 ){
 			gsl_histogram2d_increment ( ph_count , r , phi );
@@ -164,7 +164,7 @@ void disk::emissivity(){
 
 			// photon mtm at source (=1) and at disk to get redshift factor //
 			// photon mtm at disk //
-			for( int i=0 ; i<4 ; i++ ) p_at_disk[i] = data[n*ncol+5+i];
+			for( int i=0 ; i<4 ; i++ ) p_at_disk[i] = data[n*ncol+4+i];
 			disk_velocity( r , v_disk , a , rms );
 			// p_dot_v at source is -1
 			dum		=	-p_dot_v( r , th , p_at_disk , v_disk , a );
@@ -215,24 +215,24 @@ void disk::tf(){
 
 	// Count the number of photons in each radial bin //
 	for ( int n=0 ; n<nph ; n++ ){
-		r	=	data[n*ncol + 2 ];
-		th	=	data[n*ncol + 3 ];
-		phi	=	data[n*ncol + 4 ];
+		r	=	data[n*ncol + 1 ];
+		th	=	data[n*ncol + 2 ];
+		phi	=	data[n*ncol + 3 ];
 		if( cos( th )<1e-2 ){
 			gsl_histogram2d_increment ( ph_count , r , phi );
 
 			// photon mtm at source (=1) and at disk to get redshift factor //
 			// photon mtm at disk //
-			for( int i=0 ; i<4 ; i++ ) p_at_disk[i] = data[n*ncol+5+i];
+			for( int i=0 ; i<4 ; i++ ) p_at_disk[i] = data[n*ncol+4+i];
 			disk_velocity( r , v_disk , a , rms );
 			// p_dot_v at source is -1
 			dum		=	-p_dot_v( r , th , p_at_disk , v_disk , a );
 			gsl_histogram2d_accumulate ( redshift , r , phi , dum );
-			gsl_histogram2d_accumulate ( r_phi_time , r , phi , data[n*ncol + 1] );
+			gsl_histogram2d_accumulate ( r_phi_time , r , phi , data[n*ncol ] );
 		}
 
 		if( r == 1000 ){
-			tsource += data[ n*ncol + 1 ];
+			tsource += data[ n*ncol ];
 			it++;
 		}
 	}
@@ -245,8 +245,8 @@ void disk::tf(){
 	for( int ir=0;ir<nr;ir++){
 		illum_flux[ir]	=	new double[nphi];
 		src_time[ir]	=	new double[nphi];
+		r				=	(rL[ir+1] + rL[ir+1])/2;
 		for( int ip=0 ; ip<nphi ; ip++ ){
-			r			=	(rL[ir+1] + rL[ir+1])/2;
 			count		=	gsl_histogram2d_get( ph_count , ir , ip );
 			dum			=	gsl_histogram2d_get( redshift , ir , ip ) / count;
 			illum_flux[ir][ip]		=	count * dum * dum / area[ir][ip];
@@ -301,7 +301,6 @@ void disk::tf(){
 		gsl_histogram2d_accumulate ( tf, t + src_time[iir][iip] - tsource, g , dum );
 	}
 
-
 	// PRINT //
 	double	lo,hi;
 	printf("xcent ");for( int i=0 ; i<ntime   ; i++ ){gsl_histogram2d_get_xrange ( tf, i, &lo, &hi);printf("%g ",(lo+hi)/2);}printf("\n");
@@ -348,11 +347,13 @@ void disk::image2disk( int npix , double imsize ,double *rvec , double a , doubl
 
 /******** Project a photon from x,y on image r,phi,g,t on disk **********/
 void disk::proj_xy( double x , double y , double *rvec , double a, double rms, double* out ){
-	double			E,L,Q,vel[4],g,sino,sino2,coso2;
+	double			E,L,Q,vel[4],g,sino,sino2,coso2,rdot[4],rvec_tmp[4];
 	int				thsign;
 
 	if(fabs(x)<1e-6) { x = (x<0)?-1e-6:1e-6;}
 	if(fabs(y)<1e-6) { y = (y<0)?-1e-6:1e-6;}
+
+	for( int i=0 ; i<4 ; i++ ) rvec_tmp[i] = rvec[i];
 
 	sino	=	sin( rvec[2] ); sino2 = sino*sino; coso2 = 1-sino2;
 
@@ -362,16 +363,16 @@ void disk::proj_xy( double x , double y , double *rvec , double a, double rms, d
 	Q		=	y*y + coso2*( -a*a*E*E + L*L/sino2);
 	thsign	=	(y<0)?1:-1;
 	photon		ph( E , L , Q , a , -1 , thsign );
-	ph.propagate( rvec );
+	ph.propagate( rvec_tmp , rdot );
 	if( ph.rh_stop ){
 		g	=	0;
 	}else{
-		disk_velocity( ph.rvec[1] , vel , a , rms );
-		g		=	-disk::p_dot_v( ph.rvec[1] , ph.rvec[2] , ph.rdot , vel , a );
+		disk_velocity( rvec_tmp[1] , vel , a , rms );
+		g		=	-disk::p_dot_v( rvec_tmp[1] , rvec_tmp[2] , rdot , vel , a );
 	}
-	out[0]	=	ph.rvec[0];		// t
-	out[1]	=	ph.rvec[1];		// r
-	out[2]	=	ph.rvec[3];		// phi
+	out[0]	=	rvec_tmp[0];		// t
+	out[1]	=	rvec_tmp[1];		// r
+	out[2]	=	rvec_tmp[3];		// phi
 	out[3]	=	g;				// g
 }
 /*=========================================================================*/
