@@ -284,8 +284,8 @@ void disk::tf( const string image_file, int ntime , double* tLim, int nenergy , 
 
 	// ------- Print tf ------ //
 	double	lo,hi;
-	printf("xcent ");for( int i=0 ; i<ntime   ; i++ ){gsl_histogram2d_get_xrange ( tf, i, &lo, &hi);printf("%g ",(lo+hi)/2);}printf("\n");
-	printf("ycent ");for( int i=0 ; i<nenergy ; i++ ){gsl_histogram2d_get_yrange ( tf, i, &lo, &hi);printf("%g ",(lo+hi)/2);}printf("\n");
+	printf("# time: ");for( int i=0 ; i<ntime   ; i++ ){gsl_histogram2d_get_xrange ( tf, i, &lo, &hi);printf("%g ",(lo+hi)/2);}printf("\n");
+	printf("# g: ");for( int i=0 ; i<nenergy ; i++ ){gsl_histogram2d_get_yrange ( tf, i, &lo, &hi);printf("%g ",(lo+hi)/2);}printf("\n");
 	for( int ie=0 ; ie<nenergy ; ie++ ){
 	for( int it=0 ; it<ntime ; it++ ){printf("%g ",gsl_histogram2d_get ( tf, it, ie ));}
 		printf("\n");
@@ -330,8 +330,7 @@ void disk::image_flux( const string image_file ){
 	// ------- Print image flux ------ //
 	int		nside = (npix-1)/2;
 	double	unit = im2disk.imsize/npix;
-	printf("xcent ");for( int i=-nside ; i<=nside ; i++ ){printf("%g ",unit*i);}printf("\n");
-	printf("ycent ");for( int i=-nside ; i<=nside ; i++ ){printf("%g ",unit*i);}printf("\n");
+	printf("# xcent: ");for( int i=-nside ; i<=nside ; i++ ){printf("%g ",unit*i);}printf("\n");
 	for( int j=0 ; j<npix ; j++ ){
 		for( int i=0 ; i<npix ; i++ ){printf("%g ",image_flux[i*npix+j]);}
 		printf("\n");
@@ -388,16 +387,16 @@ void disk::image_flux_time( const string image_file, int ntime , double* tLim ){
 
 	// ------- Print image flux ------ //
 	int		nside = (npix-1)/2;
-	double	unit = im2disk.imsize/npix;
+	double	unit = im2disk.imsize/npix, tunit = (tLim[1]-tLim[0])/ntime;
 
+	// use split -p '^xcen' out.dat out_ to split into veus
+	printf("# xcent: ");for( int i=-nside ; i<=nside ; i++ ){printf("%g ",unit*i);}printf("\n");
+	printf("# time: ");for( int i=0 ; i<ntime ; i++ ){printf("%g ", tLim[0]+tunit*(i+0.5));}printf("\n");
 	for( int it=0 ; it<ntime ; it ++ ){
-		printf("xcent ");for( int i=-nside ; i<=nside ; i++ ){printf("%g ",unit*i);}printf("\n");
-		printf("ycent ");for( int i=-nside ; i<=nside ; i++ ){printf("%g ",unit*i);}printf("\n");
 		for( int j=0 ; j<npix ; j++ ){
 			for( int i=0 ; i<npix ; i++ ){printf("%g ",image_flux[it][i*npix+j]);}
 			printf("\n");
 		}
-		printf("\n\n");
 	}
 	gsl_histogram_free( tf );
 	for( int it=0;it<ntime;it++) delete[] image_flux[it];
