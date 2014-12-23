@@ -9,10 +9,10 @@
 
 namespace gr {
 
-disk::disk( const string fname , int nr_ , double* rlim , int np ,bool rlog_ ) {
+disk::disk( const string flashfile , int nr_ , double* rlim , int np ,bool rlog_ ) {
 	// Read the flash file //
 	int		dim[2];
-	flash::read_hdf5( fname , data , attr , dim );
+	flash::read_hdf5( flashfile , data , attr , dim );
 	nph		=	dim[0];
 	ncol	=	dim[1];
 	a		=	attr[8];
@@ -49,10 +49,12 @@ disk::disk( const string fname , int nr_ , double* rlim , int np ,bool rlog_ ) {
 
 
 	// ------- containers -------- //
-	ph_count	=	gsl_histogram2d_alloc( nr , nphi );
-	redshift	=	gsl_histogram2d_alloc( nr , nphi );
-	gsl_histogram2d_set_ranges ( ph_count, rL, nr+1, phiL, nphi+1);
-	gsl_histogram2d_set_ranges ( redshift, rL, nr+1, phiL, nphi+1);
+	r_phi_count	=	gsl_histogram2d_alloc( nr , nphi );
+	r_phi_redshift	=	gsl_histogram2d_alloc( nr , nphi );
+	r_phi_time		=	gsl_histogram2d_alloc( nr , nphi );
+	gsl_histogram2d_set_ranges ( r_phi_count, rL, nr+1, phiL, nphi+1);
+	gsl_histogram2d_set_ranges ( r_phi_redshift, rL, nr+1, phiL, nphi+1);
+	gsl_histogram2d_set_ranges ( r_phi_time, rL, nr+1, phiL, nphi+1);
 
 
 	// ------ Proper area of disk elements ------ //
@@ -72,8 +74,9 @@ disk::disk( const string fname , int nr_ , double* rlim , int np ,bool rlog_ ) {
 
 disk::~disk() {
 	delete[] rL; delete[] phiL;
-	gsl_histogram2d_free( ph_count );
-	gsl_histogram2d_free( redshift );
+	gsl_histogram2d_free( r_phi_count );
+	gsl_histogram2d_free( r_phi_redshift );
+	gsl_histogram2d_free( r_phi_time );
 	for( int ir=0;ir<nr;ir++ ) {delete[] area[ir];} delete[] area;
 	delete[] data; delete[] attr;
 }
@@ -145,22 +148,21 @@ void disk::disk_velocity( double in_r , double* vel , double a , double rms ){
 /*===========================================================*/
 
 
-/************* Calculate disk emissivity **********/
-void disk::emissivity(){
-
+/********* bins flash data into r_phi bins **********/
+void disk::flash_to_r_phi( double& tsource ){
 	double		r,th,phi,dum;
 	double		p_at_disk[4],v_disk[4];
-	//int			ir;
+	int			it=0;
+	tsource 	= 0;
+
 
 	// Count the number of photons in each radial bin //
 	for ( int n=0 ; n<nph ; n++ ){
 		r	=	data[n*ncol + 1 ];
 		th	=	data[n*ncol + 2 ];
 		phi	=	data[n*ncol + 3 ];
-
 		if( cos( th )<1e-2 ){
-			gsl_histogram2d_increment ( ph_count , r , phi );
-
+			gsl_histogram2d_increment ( r_phi_count , r , phi );
 
 			// photon mtm at source (=1) and at disk to get redshift factor //
 			// photon mtm at disk //
@@ -168,15 +170,31 @@ void disk::emissivity(){
 			disk_velocity( r , v_disk , a , rms );
 			// p_dot_v at source is -1
 			dum		=	-p_dot_v( r , th , p_at_disk , v_disk , a );
-			gsl_histogram2d_accumulate ( redshift , r , phi , dum );
+			gsl_histogram2d_accumulate ( r_phi_redshift , r , phi , dum );
+			gsl_histogram2d_accumulate ( r_phi_time , r , phi , data[n*ncol ] );
+		}
+
+		if( r == 1000 ){
+			tsource += data[ n*ncol ];
+			it++;
 		}
 	}
+	tsource		/=	it;
+}
+/*==================================================*/
 
-	double		count,emiss;
+
+/************* Calculate disk emissivity **********/
+void disk::emissivity(){
+
+	double		dum;
+	flash_to_r_phi( dum );
+
+	double		r,count,emiss;
 	for( int ir=0;ir<nr;ir++){for( int ip=0 ; ip<nphi ; ip++ ){
 		r			=	(rL[ir+1] + rL[ir+1])/2;
-		count		=	gsl_histogram2d_get( ph_count , ir , ip );
-		dum			=	gsl_histogram2d_get( redshift , ir , ip ) / count;
+		count		=	gsl_histogram2d_get( r_phi_count , ir , ip );
+		dum			=	gsl_histogram2d_get( r_phi_redshift , ir , ip ) / count;
 		emiss		=	count * dum * dum / area[ir][ip];
 		printf("%g %g\n",r,emiss);
 	}}
@@ -203,40 +221,10 @@ double disk::p_dot_v( double r, double th , double* p , double* v , double a ){
 
 
 /***** TF from source to disk and to observer *****/
-void disk::tf(){
+void disk::tf( int ntime , double* tLim, int nenergy , double* enLim ){
 
-	// read flash data //
-	double		r,th,phi,dum,tsource = 0;
-	double		p_at_disk[4],v_disk[4];
-	int			it=0;
-	gsl_histogram2d		*r_phi_time = gsl_histogram2d_alloc( nr , nphi );
-	gsl_histogram2d_set_ranges ( r_phi_time, rL, nr+1, phiL, nphi+1);
-
-
-	// Count the number of photons in each radial bin //
-	for ( int n=0 ; n<nph ; n++ ){
-		r	=	data[n*ncol + 1 ];
-		th	=	data[n*ncol + 2 ];
-		phi	=	data[n*ncol + 3 ];
-		if( cos( th )<1e-2 ){
-			gsl_histogram2d_increment ( ph_count , r , phi );
-
-			// photon mtm at source (=1) and at disk to get redshift factor //
-			// photon mtm at disk //
-			for( int i=0 ; i<4 ; i++ ) p_at_disk[i] = data[n*ncol+4+i];
-			disk_velocity( r , v_disk , a , rms );
-			// p_dot_v at source is -1
-			dum		=	-p_dot_v( r , th , p_at_disk , v_disk , a );
-			gsl_histogram2d_accumulate ( redshift , r , phi , dum );
-			gsl_histogram2d_accumulate ( r_phi_time , r , phi , data[n*ncol ] );
-		}
-
-		if( r == 1000 ){
-			tsource += data[ n*ncol ];
-			it++;
-		}
-	}
-	tsource		/=	it;
+	double		tsource,r,dum,phi;
+	flash_to_r_phi( tsource );
 
 
 	double		count,**illum_flux,**src_time;
@@ -247,8 +235,8 @@ void disk::tf(){
 		src_time[ir]	=	new double[nphi];
 		r				=	(rL[ir+1] + rL[ir+1])/2;
 		for( int ip=0 ; ip<nphi ; ip++ ){
-			count		=	gsl_histogram2d_get( ph_count , ir , ip );
-			dum			=	gsl_histogram2d_get( redshift , ir , ip ) / count;
+			count		=	gsl_histogram2d_get( r_phi_count , ir , ip );
+			dum			=	gsl_histogram2d_get( r_phi_redshift , ir , ip ) / count;
 			illum_flux[ir][ip]		=	count * dum * dum / area[ir][ip];
 			src_time[ir][ip]		=	gsl_histogram2d_get( r_phi_time , ir , ip ) / count;
 		}
@@ -263,43 +251,28 @@ void disk::tf(){
 
 	// IMAGE SECTION //
 
-	int		npix 		= 	300;
-	int		ntime		=	100;
-	int		nenergy		=	100;
-	double	tLim[2]		=	{ 0 , 200 };
-	double	enLim[2]	=	{ 0.5 , 2 };
-	double	imsize		=	200.;
-	double	theta_o		=	1.4;
-
 	gsl_histogram2d		*tf	=	gsl_histogram2d_alloc( ntime , nenergy );
 	gsl_histogram2d_set_ranges_uniform ( tf, tLim[0], tLim[1], enLim[0], enLim[1]);
 
-	// Location of the observer and relevant variables //
-	double 		rvec[4];
-	rvec[0]		=	0; rvec[1] = 1000; rvec[2] = theta_o ; rvec[3] = 0;
+	// Image to disk //
+	image		im2disk("image.h5");
+	int	npix	=	im2disk.npix;
+
 
 	// Image dimensions //
-	if( npix%2 == 0) npix++;
-	double		**im2disk = new double*[npix*npix];
-	for( int i=0;i<(npix*npix);i++) im2disk[i] = new double[4];
-	// convert from pixels at x,y to t,r,phi,g //
-	image2disk( npix , imsize , rvec , a , rms ,im2disk );
-
 	unsigned long 	iir,iip;
 	double			t,g;
-	for( int ix =0 ; ix<(npix*npix) ; ix++ ){
-
-		t		=	im2disk[ ix ][0];
-		r		=	im2disk[ ix ][1];
-		phi		=	im2disk[ ix ][2];
-		g		=	im2disk[ ix ][3];
-
+	for( int ii=0 ; ii<npix ; ii++ ){for(int jj=0 ; jj<npix ; jj++ ){
+		t		=	im2disk(ii,jj,0);
+		r		=	im2disk(ii,jj,1);
+		phi		=	im2disk(ii,jj,2);
+		g		=	im2disk(ii,jj,3);
 
 		if(r<rL[0] or r>rL[nr]) continue;
-		gsl_histogram2d_find ( ph_count , r, phi, &iir, &iip );
+		gsl_histogram2d_find ( r_phi_count , r, phi, &iir, &iip );
 		dum		=	illum_flux[iir][iip] * pow(g,3)/area[iir][iip];
 		gsl_histogram2d_accumulate ( tf, t + src_time[iir][iip] - tsource, g , dum );
-	}
+	}}
 
 	// PRINT //
 	double	lo,hi;
@@ -312,70 +285,10 @@ void disk::tf(){
 		printf("\n");
 	}
 
-	gsl_histogram2d_free(r_phi_time);
 	for( int ir=0;ir<nr;ir++){delete[] illum_flux[ir]; delete[] src_time[ir];}
 	delete[] illum_flux;delete[] src_time;
-	for( int i=0;i<(npix*npix);i++) delete[] im2disk[i];
-	delete[] im2disk;
 	gsl_histogram2d_free( tf );
 }
 /*================================================*/
-
-
-/******** Project image frame to disk  **********/
-void disk::image2disk( int npix , double imsize ,double *rvec , double a , double rms, double**ret ){
-
-	int			nside;
-	double		unit,x,y,out[4];
-
-	nside	=	(npix-1)/2;
-	unit	=	imsize/npix;
-
-	for( int i=-nside, ii=0 ; i<=nside ; i++ ){
-		x	=	unit * i;
-		for( int j=-nside, jj=0 ; j<=nside ; j++ ){
-			y	=	unit * j;
-			proj_xy( x , y , rvec , a , rms , out );
-			for( int n=0;n<4;n++) ret[ii*npix+jj][n] = out[n];
-			jj++;
-		}
-		ii++;
-	}
-}
-/*=================================================*/
-
-
-/******** Project a photon from x,y on image r,phi,g,t on disk **********/
-void disk::proj_xy( double x , double y , double *rvec , double a, double rms, double* out ){
-	double			E,L,Q,vel[4],g,sino,sino2,coso2,rdot[4],rvec_tmp[4];
-	int				thsign;
-
-	if(fabs(x)<1e-6) { x = (x<0)?-1e-6:1e-6;}
-	if(fabs(y)<1e-6) { y = (y<0)?-1e-6:1e-6;}
-
-	for( int i=0 ; i<4 ; i++ ) rvec_tmp[i] = rvec[i];
-
-	sino	=	sin( rvec[2] ); sino2 = sino*sino; coso2 = 1-sino2;
-
-
-	E		=	1.0;
-	L		=	x*sino;
-	Q		=	y*y + coso2*( -a*a*E*E + L*L/sino2);
-	thsign	=	(y<0)?1:-1;
-	photon		ph( E , L , Q , a , -1 , thsign );
-	ph.propagate( rvec_tmp , rdot );
-	if( ph.rh_stop ){
-		g	=	0;
-	}else{
-		disk_velocity( rvec_tmp[1] , vel , a , rms );
-		g		=	-disk::p_dot_v( rvec_tmp[1] , rvec_tmp[2] , rdot , vel , a );
-	}
-	out[0]	=	rvec_tmp[0];		// t
-	out[1]	=	rvec_tmp[1];		// r
-	out[2]	=	rvec_tmp[3];		// phi
-	out[3]	=	g;				// g
-}
-/*=========================================================================*/
-
 
 } /* namespace gr */

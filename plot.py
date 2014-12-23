@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 d = np.loadtxt('tmp.dat')
-
+plt.plot(d[:,0],d[:,1],'o');plt.show();exit(0);
 
 fig = plt.figure()
 ax = Axes3D(fig)

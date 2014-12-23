@@ -90,14 +90,7 @@ void flash::illum( int num , const string fname ){
 			k++;
 		}
 	}
-	/*
-	double		SRC[4];
-	for( int i=0 ; i<4 ; i++ ) SRC[i] = src[i];
-	tetrad		TET(*tet);
-	k = 1;
-	illum( Alpha[k] , Beta[k] , &data[k*ncol] , SRC, TET );
-	exit(0);
-	*/
+
 #pragma omp parallel
 {
 	// Some variables to avoid calling globals in parallel //
@@ -126,7 +119,7 @@ void flash::illum( int num , const string fname ){
 /******** Write the output of illum to an hdf5 file **********/
 void flash::write_hdf5( double *data , int nx, int ny , const string fname ){
 	H5std_string  	FILE_NAME( fname );
-	hsize_t     	dim[2],dims[]={ATTR_SIZE};
+	hsize_t     	dim[2],dims[]={FLASH_ATTR_SIZE};
 	dim[0] = nx; dim[1] = ny;
 	try{
 
@@ -136,11 +129,11 @@ void flash::write_hdf5( double *data , int nx, int ny , const string fname ){
 		H5::DataSpace 	dataspace( 2, dim );
 
 
-		H5::DataSet 	dataset = file.createDataSet( DATASET_NAME, H5::PredType::NATIVE_DOUBLE, dataspace );
+		H5::DataSet 	dataset = file.createDataSet( FLASH_DATASET, H5::PredType::NATIVE_DOUBLE, dataspace );
 		dataset.write( data, H5::PredType::NATIVE_DOUBLE );
 
-		double attr[ATTR_SIZE] = {src[0],src[1],src[2],src[3],tet->td,tet->rd,tet->thd,tet->pd,a};
-		dataset.createAttribute( ATTR , H5::PredType::NATIVE_DOUBLE ,
+		double attr[FLASH_ATTR_SIZE] = {src[0],src[1],src[2],src[3],tet->td,tet->rd,tet->thd,tet->pd,a};
+		dataset.createAttribute( FLASH_ATTR_LABEL , H5::PredType::NATIVE_DOUBLE ,
 				H5::DataSpace ( 1, dims )).write(H5::PredType::NATIVE_DOUBLE, attr);
 
 
@@ -159,10 +152,10 @@ void flash::read_hdf5( const string fname , double *&data , double* &attr , int 
 
 
 	H5::H5File		file( FILE_NAME, H5F_ACC_RDONLY );
-	H5::DataSet		dataset 	= 	file.openDataSet( DATASET_NAME );
+	H5::DataSet		dataset 	= 	file.openDataSet( FLASH_DATASET );
 	H5::DataSpace 	filespace 	= 	dataset.getSpace();
-	H5::Attribute	attribute	=	dataset.openAttribute(ATTR);
-	attr	=	new double[ATTR_SIZE];
+	H5::Attribute	attribute	=	dataset.openAttribute(FLASH_ATTR_LABEL);
+	attr	=	new double[FLASH_ATTR_SIZE];
 	attribute.read( H5::PredType::NATIVE_DOUBLE , attr );
 
 	filespace.getSimpleExtentDims( dims );
