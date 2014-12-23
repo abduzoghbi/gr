@@ -56,6 +56,13 @@ disk::disk( const string flashfile , int nr_ , double* rlim , int np ,bool rlog_
 	gsl_histogram2d_set_ranges ( r_phi_redshift, rL, nr+1, phiL, nphi+1);
 	gsl_histogram2d_set_ranges ( r_phi_time, rL, nr+1, phiL, nphi+1);
 
+	illum_flux		=	new double*[ nr ];
+	src_time		=	new double*[ nr ];
+	for( int ir = 0 ; ir<nr ; ir++ ){
+		illum_flux[ir]	=	new double[nphi];
+		src_time[ir]	=	new double[nphi];
+	}
+
 
 	// ------ Proper area of disk elements ------ //
 	area		=	new double*[nr];
@@ -77,7 +84,8 @@ disk::~disk() {
 	gsl_histogram2d_free( r_phi_count );
 	gsl_histogram2d_free( r_phi_redshift );
 	gsl_histogram2d_free( r_phi_time );
-	for( int ir=0;ir<nr;ir++ ) {delete[] area[ir];} delete[] area;
+	for( int ir=0;ir<nr;ir++ ) {delete[] area[ir];delete[] illum_flux[ir]; delete[] src_time[ir];}
+	delete[] area;delete[] illum_flux;delete[] src_time;
 	delete[] data; delete[] attr;
 }
 
@@ -150,7 +158,7 @@ void disk::disk_velocity( double in_r , double* vel , double a , double rms ){
 
 /********* bins flash data into r_phi bins **********/
 void disk::flash_to_r_phi( double& tsource ){
-	double		r,th,phi,dum;
+	double		r,th,phi,dum,count;
 	double		p_at_disk[4],v_disk[4];
 	int			it=0;
 	tsource 	= 0;
@@ -180,24 +188,40 @@ void disk::flash_to_r_phi( double& tsource ){
 		}
 	}
 	tsource		/=	it;
+
+	for( int ir=0;ir<nr;ir++){
+		r				=	(rL[ir+1] + rL[ir+1])/2;
+		for( int ip=0 ; ip<nphi ; ip++ ){
+			count		=	gsl_histogram2d_get( r_phi_count , ir , ip );
+			dum			=	gsl_histogram2d_get( r_phi_redshift , ir , ip ) / count;
+			illum_flux[ir][ip]		=	count * dum * dum / area[ir][ip];
+			src_time[ir][ip]		=	gsl_histogram2d_get( r_phi_time , ir , ip ) / count;
+		}
+	}
 }
 /*==================================================*/
 
 
 /************* Calculate disk emissivity **********/
-void disk::emissivity(){
+void disk::emissivity( bool avg_phi ){
 
 	double		dum;
 	flash_to_r_phi( dum );
 
-	double		r,count,emiss;
-	for( int ir=0;ir<nr;ir++){for( int ip=0 ; ip<nphi ; ip++ ){
-		r			=	(rL[ir+1] + rL[ir+1])/2;
-		count		=	gsl_histogram2d_get( r_phi_count , ir , ip );
-		dum			=	gsl_histogram2d_get( r_phi_redshift , ir , ip ) / count;
-		emiss		=	count * dum * dum / area[ir][ip];
-		printf("%g %g\n",r,emiss);
-	}}
+	double		r;
+	if( avg_phi ){
+		for( int ir=0;ir<nr;ir++){
+			r		=	(rL[ir+1] + rL[ir+1])/2;
+			dum		=	0;
+			for( int ip=0 ; ip<nphi ; ip++ ){ dum += illum_flux[ir][ip];}
+			printf("%g %g\n",r,dum);
+		}
+	}else{
+		for( int ir=0;ir<nr;ir++){for( int ip=0 ; ip<nphi ; ip++ ){
+			r		=	(rL[ir+1] + rL[ir+1])/2;
+			printf("%g %g\n",r,illum_flux[ir][ip]);
+		}}
+	}
 
 }
 /*===================================================*/
@@ -221,28 +245,11 @@ double disk::p_dot_v( double r, double th , double* p , double* v , double a ){
 
 
 /***** TF from source to disk and to observer *****/
-void disk::tf( int ntime , double* tLim, int nenergy , double* enLim ){
+void disk::tf( const string image_file, int ntime , double* tLim, int nenergy , double* enLim ){
 
+	// SETUP FLASH: Read emissivity -> illum_flux and src-disk time -> src_time //
 	double		tsource,r,dum,phi;
 	flash_to_r_phi( tsource );
-
-
-	double		count,**illum_flux,**src_time;
-	illum_flux		=	new double*[nr];
-	src_time		=	new double*[nr];
-	for( int ir=0;ir<nr;ir++){
-		illum_flux[ir]	=	new double[nphi];
-		src_time[ir]	=	new double[nphi];
-		r				=	(rL[ir+1] + rL[ir+1])/2;
-		for( int ip=0 ; ip<nphi ; ip++ ){
-			count		=	gsl_histogram2d_get( r_phi_count , ir , ip );
-			dum			=	gsl_histogram2d_get( r_phi_redshift , ir , ip ) / count;
-			illum_flux[ir][ip]		=	count * dum * dum / area[ir][ip];
-			src_time[ir][ip]		=	gsl_histogram2d_get( r_phi_time , ir , ip ) / count;
-		}
-	}
-	// END FLASH SECTION //
-
 
 
 	// -------------------------------------------------- //
@@ -255,7 +262,7 @@ void disk::tf( int ntime , double* tLim, int nenergy , double* enLim ){
 	gsl_histogram2d_set_ranges_uniform ( tf, tLim[0], tLim[1], enLim[0], enLim[1]);
 
 	// Image to disk //
-	image		im2disk("image.h5");
+	image		im2disk( image_file );
 	int	npix	=	im2disk.npix;
 
 
@@ -274,20 +281,127 @@ void disk::tf( int ntime , double* tLim, int nenergy , double* enLim ){
 		gsl_histogram2d_accumulate ( tf, t + src_time[iir][iip] - tsource, g , dum );
 	}}
 
-	// PRINT //
+
+	// ------- Print tf ------ //
 	double	lo,hi;
 	printf("xcent ");for( int i=0 ; i<ntime   ; i++ ){gsl_histogram2d_get_xrange ( tf, i, &lo, &hi);printf("%g ",(lo+hi)/2);}printf("\n");
 	printf("ycent ");for( int i=0 ; i<nenergy ; i++ ){gsl_histogram2d_get_yrange ( tf, i, &lo, &hi);printf("%g ",(lo+hi)/2);}printf("\n");
 	for( int ie=0 ; ie<nenergy ; ie++ ){
-		for( int it=0 ; it<ntime ; it++ ){
-			printf("%g ",gsl_histogram2d_get ( tf, it, ie ));
-		}
+	for( int it=0 ; it<ntime ; it++ ){printf("%g ",gsl_histogram2d_get ( tf, it, ie ));}
+		printf("\n");
+	}
+	gsl_histogram2d_free( tf );
+}
+/*================================================*/
+
+
+/***** Flux from illuminated disk at each image pixel *****/
+void disk::image_flux( const string image_file ){
+
+	// SETUP FLASH: Read emissivity -> illum_flux and src-disk time -> src_time //
+	double		tsource,r,dum,phi;
+	flash_to_r_phi( tsource );
+
+
+	// -------------------------------------------------- //
+
+	// Image to disk //
+	image		im2disk( image_file );
+	int	npix	=	im2disk.npix;
+	double		*image_flux;
+	image_flux	=	new double[npix*npix];
+
+
+	// Image dimensions //
+	unsigned long 	iir,iip;
+	double			g;
+	for( int ii=0 ; ii<npix ; ii++ ){for(int jj=0 ; jj<npix ; jj++ ){
+		r		=	im2disk(ii,jj,1);
+		phi		=	im2disk(ii,jj,2);
+		g		=	im2disk(ii,jj,3);
+
+		if(r<rL[0] or r>rL[nr]) continue;
+		gsl_histogram2d_find ( r_phi_count , r, phi, &iir, &iip );
+		dum		=	illum_flux[iir][iip] * pow(g,3)/area[iir][iip];
+		image_flux[ii*npix + jj]		=	dum;
+	}}
+
+
+	// ------- Print image flux ------ //
+	int		nside = (npix-1)/2;
+	double	unit = im2disk.imsize/npix;
+	printf("xcent ");for( int i=-nside ; i<=nside ; i++ ){printf("%g ",unit*i);}printf("\n");
+	printf("ycent ");for( int i=-nside ; i<=nside ; i++ ){printf("%g ",unit*i);}printf("\n");
+	for( int j=0 ; j<npix ; j++ ){
+		for( int i=0 ; i<npix ; i++ ){printf("%g ",image_flux[i*npix+j]);}
 		printf("\n");
 	}
 
-	for( int ir=0;ir<nr;ir++){delete[] illum_flux[ir]; delete[] src_time[ir];}
-	delete[] illum_flux;delete[] src_time;
-	gsl_histogram2d_free( tf );
+	delete[] image_flux;
+}
+/*================================================*/
+
+
+/***** flux at each pixel as a function of time *****/
+void disk::image_flux_time( const string image_file, int ntime , double* tLim ){
+
+	// SETUP FLASH: Read emissivity -> illum_flux and src-disk time -> src_time //
+	double		tsource,r,dum,phi;
+	flash_to_r_phi( tsource );
+
+	// -------------------------------------------------- //
+
+	// IMAGE SECTION //
+
+	gsl_histogram		*tf	=	gsl_histogram_alloc( ntime  );
+	gsl_histogram_set_ranges_uniform ( tf, tLim[0], tLim[1] );
+
+	// Image to disk //
+	image		im2disk( image_file );
+	int	npix	=	im2disk.npix;
+	double		**image_flux;
+	image_flux	=	new double*[ntime];
+	for( int it=0;it<ntime;it++) {
+		image_flux[it]	=	new double[npix*npix];
+		for(int i=0;i<npix*npix;i++) image_flux[it][i] = 0;
+	}
+
+
+	// Image dimensions //
+	unsigned long 	iir,iip,iit;
+	double			t,g;
+	for( int ii=0 ; ii<npix ; ii++ ){for(int jj=0 ; jj<npix ; jj++ ){
+		t		=	im2disk(ii,jj,0);
+		r		=	im2disk(ii,jj,1);
+		phi		=	im2disk(ii,jj,2);
+		g		=	im2disk(ii,jj,3);
+
+		if(r<rL[0] or r>rL[nr]) continue;
+		gsl_histogram2d_find ( r_phi_count , r, phi, &iir, &iip );
+		t		=	t + src_time[iir][iip] - tsource;
+		if( t<tLim[0] or t>tLim[1]) continue;
+		gsl_histogram_find   ( tf , t, &iit );
+		dum		=	illum_flux[iir][iip] * pow(g,3)/area[iir][iip];
+		image_flux[iit][ii*npix + jj]	=	dum;
+		gsl_histogram_accumulate ( tf, t , dum );
+	}}
+
+	// ------- Print image flux ------ //
+	int		nside = (npix-1)/2;
+	double	unit = im2disk.imsize/npix;
+
+	for( int it=0 ; it<ntime ; it ++ ){
+		printf("xcent ");for( int i=-nside ; i<=nside ; i++ ){printf("%g ",unit*i);}printf("\n");
+		printf("ycent ");for( int i=-nside ; i<=nside ; i++ ){printf("%g ",unit*i);}printf("\n");
+		for( int j=0 ; j<npix ; j++ ){
+			for( int i=0 ; i<npix ; i++ ){printf("%g ",image_flux[it][i*npix+j]);}
+			printf("\n");
+		}
+		printf("\n\n");
+	}
+	gsl_histogram_free( tf );
+	for( int it=0;it<ntime;it++) delete[] image_flux[it];
+	delete[] image_flux;
 }
 /*================================================*/
 

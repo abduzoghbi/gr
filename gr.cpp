@@ -19,25 +19,28 @@ int main() {
 	/*
 	double			pos[4] = { 0 , 20 , 1e-3 , 0 };
 	double			drdt[3] = {0,.0,1e-4};
-	gr::flash		fl( pos , drdt , 0.9 );
-	fl.illum(4000);
+	gr::flash		fl( pos , drdt , 0.98 );
+	fl.illum(1000);
 	*/
 
 	/*
-	//gr::image		im( 0.9 , 1. , 40. , 100 );
-	//im.write_hdf5("image.h5");
-	gr::image		im( "image.h5" );
+	gr::image		im( 0.98 , 1.2 , 200. , 500 );
+	im.write_hdf5("image.h5");
+	//gr::image		im( "image.h5" );
 	*/
 
 
 
-	double		rlim[2] = {1.2,100};
-	gr::disk	disk( "illum.h5" , 200  , rlim , 20  );
-	//disk.emissivity();
-
+	double		rlim[2] = {1.2,200};
+	gr::disk	disk( "illum.h5" , 100  , rlim , 100  );
+	//disk.emissivity(true);
 	double	tLim[2]		=	{ 0 , 100 };
 	double	enLim[2]	=	{ 0.5 , 2 };
-	disk.tf(400,tLim,400,enLim);
+	//disk.tf("image.h5",400,tLim,400,enLim);
+	//disk.image_flux("image.h5");
+	disk.image_flux_time("image.h5",10,tLim);
 
+
+	//gr::image		im( "image.h5" );
 
 }

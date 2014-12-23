@@ -11,6 +11,7 @@
 #include "flash.hpp"
 #include "image.hpp"
 #include <gsl/gsl_histogram2d.h>
+#include <gsl/gsl_histogram.h>
 
 namespace gr {
 
@@ -22,7 +23,7 @@ class disk {
 	bool		rlog;
 
 	gsl_histogram2d		*r_phi_count,*r_phi_redshift,*r_phi_time;
-	double				**area;
+	double				**area,**illum_flux,**src_time;
 
 
 	// -------- Private Functions  -------- //
@@ -39,8 +40,10 @@ public:
 	static double proper_disk_area( double r , double a , double rms );
 	static void	disk_velocity( double r , double* vel , double a, double rms );
 	static double p_dot_v( double r, double th , double* p , double* v , double a );
-	void emissivity();
-	void tf( int ntime , double* tLim, int nenergy , double* enLim );
+	void emissivity( bool avg_phi=false );
+	void tf( const string image_file, int ntime , double* tLim, int nenergy , double* enLim );
+	void image_flux( const string image_file );
+	void image_flux_time( const string image_file , int ntime , double *tLim );
 };
 
 } /* namespace gr */
