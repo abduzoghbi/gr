@@ -10,5 +10,8 @@
 
 #include "flash.hpp"
 #include "disk.hpp"
+#include "input.hpp"
+
+void print_usage();
 
 #endif /* INC_GR_HPP_ */

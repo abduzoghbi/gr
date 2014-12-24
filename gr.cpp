@@ -7,41 +7,43 @@
 
 #include "inc/gr.hpp"
 
-int main() {
-	/*
-	double			pos[4] = { 0 , 10 , 1e-5 , 0 };
-	double			drdt[3] = {0,.0,1e-4};
-	gr::photon 		ph( 0.7 , 0 , 0 , .8 , -1 , -1 );
-	//gr::tetrad		tet( pos , drdt , 0.8 );
-	ph.propagate( pos , drdt );
-	*/
+int main( int argc , char* argv[] ) {
 
-	/*
-	double			pos[4] = { 0 , 5 , 1e-3 , 0 };
-	double			drdt[3] = {0,.0,1e-4};
-	gr::flash		fl( pos , drdt , 0.98 );
-	fl.illum(2000);
-	*/
+	if( argc != 2 ) {
+		gr::input::print_usage();
+		exit(1);
+	}
+	gr::input		in( argv[1] );
 
-	/*
-	gr::image		im( 0.98 , 1. , 200. , 500 );
-	im.write_hdf5("image.h5");
-	//gr::image		im( "image.h5" );
-	exit(0);
-	*/
+	if( in.mode == 1 ){ // flash //
+		gr::flash		flash( in.src_pos , in.src_drdt , in.spin );
+		flash.illum( in.flash_num , in.flash_file );
+	}
 
+	if( in.mode == 2 ){ // image //
+		gr::image		image( in.spin , in.theta_o , in.imsize , in.npix );
+		image.write_hdf5( in.image_file );
+	}
 
+	if( in.mode == 3 ){ // Emissivity //
+		gr::disk 		disk( in.flash_file , in.nr , in.rL , in.nphi );
+		disk.emissivity(true);
+	}
 
-	double		rlim[2] = {1.2,100};
-	gr::disk	disk( "illum.h5" , 500  , rlim , 500  );
-	//disk.emissivity(true);
-	double	tLim[2]		=	{ 0 , 20 };
-	double	enLim[2]	=	{ 0.5 , 2 };
-	disk.tf("image.h5",200,tLim,200,enLim);
-	//disk.image_flux("image.h5");
-	//disk.image_flux_time("image.h5",20,tLim);
+	if( in.mode == 4 ){ // image_flux //
+		gr::disk 		disk( in.flash_file , in.nr , in.rL , in.nphi );
+		disk.image_flux( in.image_file );
+	}
 
+	if( in.mode == 5 ){ // image_flux_time //
+		gr::disk 		disk( in.flash_file , in.nr , in.rL , in.nphi );
+		disk.image_flux_time( in.image_file , in.ntime , in.tL );
+	}
 
-	//gr::image		im( "image.h5" );
+	if( in.mode == 6 ){ // Transfer Function //
+		gr::disk 		disk( in.flash_file , in.nr , in.rL , in.nphi );
+		disk.tf( in.image_file , in.ntime , in.tL , in.nenergy , in.enL );
+	}
 
 }
+
