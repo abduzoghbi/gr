@@ -70,7 +70,7 @@ disk::disk( const string flashfile , int nr_ , double* rlim , int np ,bool rlog_
 	for( int ir = 0 ; ir<nr ; ir++ ){
 		r		=	(rL[ir+1] + rL[ir])/2.0;
 		dr		=	(rL[ir+1] - rL[ir]);
-		dum		=	proper_disk_area( r , a , rms ) * dr ;
+		dum		=	proper_disk_area( r , a , rms ) * dr;
 		area[ir] = new double[nphi];
 		for( int ip = 0 ; ip<nphi ; ip++ ){
 			dphi			=	(phiL[ip+1] - phiL[ip]);
@@ -194,7 +194,8 @@ void disk::flash_to_r_phi( double& tsource ){
 		for( int ip=0 ; ip<nphi ; ip++ ){
 			count		=	gsl_histogram2d_get( r_phi_count , ir , ip );
 			dum			=	gsl_histogram2d_get( r_phi_redshift , ir , ip ) / count;
-			illum_flux[ir][ip]		=	count * dum * dum / area[ir][ip];
+			//illum_flux[ir][ip]		=	count * dum * dum * dum / area[ir][ip];
+			illum_flux[ir][ip]		=	count * pow(dum, 3) / area[ir][ip];
 			src_time[ir][ip]		=	gsl_histogram2d_get( r_phi_time , ir , ip ) / count;
 		}
 	}
@@ -268,7 +269,8 @@ void disk::tf( const string image_file, int ntime , double* tLim, int nenergy , 
 
 	// Image dimensions //
 	unsigned long 	iir,iip;
-	double			t,g;
+	double			t,g,sum;
+	sum = 0;
 	for( int ii=0 ; ii<npix ; ii++ ){for(int jj=0 ; jj<npix ; jj++ ){
 		t		=	im2disk(ii,jj,0);
 		r		=	im2disk(ii,jj,1);
@@ -277,7 +279,9 @@ void disk::tf( const string image_file, int ntime , double* tLim, int nenergy , 
 
 		if(r<rL[0] or r>rL[nr]) continue;
 		gsl_histogram2d_find ( r_phi_count , r, phi, &iir, &iip );
-		dum		=	illum_flux[iir][iip] * pow(g,3)/area[iir][iip];
+		//dum		=	illum_flux[iir][iip] * pow(g,3)/area[iir][iip];
+		dum		=	illum_flux[iir][iip] /pow(g,3);//* area[iir][iip] / pow(g,3);
+		sum += dum;
 		gsl_histogram2d_accumulate ( tf, t + src_time[iir][iip] - tsource, g , dum );
 	}}
 
@@ -287,7 +291,7 @@ void disk::tf( const string image_file, int ntime , double* tLim, int nenergy , 
 	printf("# time: ");for( int i=0 ; i<ntime   ; i++ ){gsl_histogram2d_get_xrange ( tf, i, &lo, &hi);printf("%g ",(lo+hi)/2);}printf("\n");
 	printf("# g: ");for( int i=0 ; i<nenergy ; i++ ){gsl_histogram2d_get_yrange ( tf, i, &lo, &hi);printf("%g ",(lo+hi)/2);}printf("\n");
 	for( int ie=0 ; ie<nenergy ; ie++ ){
-	for( int it=0 ; it<ntime ; it++ ){printf("%g ",gsl_histogram2d_get ( tf, it, ie ));}
+	for( int it=0 ; it<ntime ; it++ ){printf("%g ",gsl_histogram2d_get ( tf, it, ie )/sum);}
 		printf("\n");
 	}
 	gsl_histogram2d_free( tf );
