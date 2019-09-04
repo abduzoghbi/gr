@@ -1,8 +1,8 @@
 
-GR: a ray tracing code for simulating light rays around a black hole.
+## GR: a ray tracing code for simulating light rays around a black hole.
 
 
-To Compile:
+### To Compile:
 - Make sure you have gsl and hdf5 libraries.
 - Define where those libraries and header files are:
 INC=""
