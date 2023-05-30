@@ -137,7 +137,7 @@ void image::write_hdf5( const string fname ){
 
 
 	} catch ( H5::Exception &err ) {
-		err.printError();
+		err.printErrorStack();
 	}
 }
 /* ========================================================= */
