@@ -138,7 +138,7 @@ void flash::write_hdf5( double *data , int nx, int ny , const string fname ){
 
 
 	} catch ( H5::Exception &err ) {
-		err.printError();
+		err.printErrorStack();
 	}
 }
 /* ========================================================= */
