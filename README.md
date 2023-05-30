@@ -11,6 +11,7 @@ LIB=""
 - run this to compile: 
 
 g++ -fopenmp -I$INC -O0 -g3 -Wall -c -o *cpp
+g++ -fopenmp -I$INC -O0 -g3 -Wall -c *cpp
 
 - link:
 
